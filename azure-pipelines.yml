@@ -1,0 +1,28 @@
+# Trigger on changes to the "main" branch
+trigger:
+- main
+
+# Trigger for PRs that target the "main" branch
+pr:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps: 
+- script: |
+    VERSION=0.9.3 
+    OS=Linux
+    ARCH=x86_64
+    curl -L https://github.com/google/ko/releases/download/v${VERSION}/ko_${VERSION}_${OS}_${ARCH}.tar.gz | sudo tar xzf - -C /usr/local/bin/
+    sudo chmod +x /usr/local/bin/ko
+  displayName: Install ko
+
+- task: GoTool@0
+  inputs:
+    version: '1.17.2'
+  displayName: Specify Go version
+
+- script: |
+    ./run-tests.sh --remote --in-proc
+  displayName: Build Run tests

@@ -1,0 +1,5 @@
+defaultBaseImage: gcr.io/distroless/base
+builds:
+- id: github.com/ismrmrd/mrd-storage-api
+  env:
+    - CGO_ENABLED=1

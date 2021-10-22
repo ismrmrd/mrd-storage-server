@@ -1,0 +1,8 @@
+{
+    "go.testFlags": ["-coverpkg=github.com/ismrmrd/mrd-storage-api/..."],
+    "go.testEnvVars": {
+        // "TEST_DB_PROVIDER":"postgresql",
+        // "TEST_STORAGE_PROVIDER":"azureblob",
+        // "TEST_REMOTE_URL":"http://localhost:3333",
+    },
+}
