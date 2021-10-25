@@ -30,7 +30,7 @@ func TestStorageWriteFailureSkipsMetadataWrite(t *testing.T) {
 
 	handler := Handler{db: mockMetadataDatabase, store: mockBlobStore}
 
-	req := httptest.NewRequest("POST", "/blob?subject=a", strings.NewReader("content"))
+	req := httptest.NewRequest("POST", "/v1/blob?subject=a", strings.NewReader("content"))
 	resp := httptest.NewRecorder()
 
 	handler.CreateBlob(resp, req)

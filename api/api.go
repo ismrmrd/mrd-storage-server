@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,6 +16,11 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/ismrmrd/mrd-storage-api/core"
 )
+
+// use a dedicated type to avoid context key collisions
+type contextKey int
+
+const apiVersionContextKey contextKey = 0
 
 type Handler struct {
 	db    core.MetadataDatabase
@@ -31,11 +37,14 @@ func BuildRouter(db core.MetadataDatabase, store core.BlobStore, logRequests boo
 	}
 	r.Use(middleware.Recoverer)
 
-	r.Route("/blob", func(r chi.Router) {
-		r.Post("/", handler.CreateBlob)
-		r.Get("/{combined-id}", handler.ReadBlob)
-		r.Get("/", handler.SearchBlobs)
-		r.Get("/latest", handler.GetLatestBlob)
+	r.Route("/v1", func(r chi.Router) {
+		r.Use(createApiVersionMiddleware("v1"))
+		r.Route("/blob", func(r chi.Router) {
+			r.Post("/", handler.CreateBlob)
+			r.Get("/{combined-id}", handler.ReadBlob)
+			r.Get("/", handler.SearchBlobs)
+			r.Get("/latest", handler.GetLatestBlob)
+		})
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
@@ -43,6 +52,17 @@ func BuildRouter(db core.MetadataDatabase, store core.BlobStore, logRequests boo
 	})
 
 	return r
+}
+
+// Creates a middleware handler for the given api version that stores the api version
+// in the request context
+func createApiVersionMiddleware(apiVersion string) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := context.WithValue(r.Context(), apiVersionContextKey, apiVersion)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }
 
 func TagHeaderName(tagName string) string {
@@ -103,14 +123,16 @@ func getBaseUri(r *http.Request) url.URL {
 	url.Host = r.Host
 
 	url.RawQuery = ""
-	url.Path = ""
+
+	// the root path segment should be the current api version
+	url.Path = r.Context().Value(apiVersionContextKey).(string)
 	return url
 }
 
 func getBlobUri(r *http.Request, subject string, id uuid.UUID) string {
 
 	uri := getBaseUri(r)
-	uri.Path = path.Join("blob", getBlobCombinedId(subject, id))
+	uri.Path = path.Join(uri.Path, "blob", getBlobCombinedId(subject, id))
 
 	return uri.String()
 }
