@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
@@ -82,7 +83,7 @@ func createRepository(dialector gorm.Dialector) (core.MetadataDatabase, error) {
 	return databaseRepository{db: db}, db.AutoMigrate(&blobMetadata{}, &customBlobMetadata{})
 }
 
-func (r databaseRepository) CreateBlobMetadata(id uuid.UUID, tags *core.BlobTags) error {
+func (r databaseRepository) CreateBlobMetadata(ctx context.Context, id uuid.UUID, tags *core.BlobTags) error {
 	metadata := blobMetadata{
 		Subject:     tags.Subject,
 		Id:          id,
@@ -93,10 +94,10 @@ func (r databaseRepository) CreateBlobMetadata(id uuid.UUID, tags *core.BlobTags
 	}
 
 	if len(tags.CustomTags) == 0 {
-		return r.db.Create(&metadata).Error
+		return r.db.WithContext(ctx).Create(&metadata).Error
 	}
 
-	return r.db.Transaction(func(tx *gorm.DB) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&metadata).Error; err != nil {
 			return err
 		}
@@ -120,9 +121,9 @@ func (r databaseRepository) CreateBlobMetadata(id uuid.UUID, tags *core.BlobTags
 	})
 }
 
-func (r databaseRepository) GetBlobMetadata(subject string, id uuid.UUID) (*core.BlobInfo, error) {
-	subquery := r.db.Model(&blobMetadata{}).Where("subject = ? AND id = ?", subject, id)
-	blobs, err := r.readTagsFromMetadataSubquery(subquery)
+func (r databaseRepository) GetBlobMetadata(ctx context.Context, subject string, id uuid.UUID) (*core.BlobInfo, error) {
+	subquery := r.db.WithContext(ctx).Model(&blobMetadata{}).Where("subject = ? AND id = ?", subject, id)
+	blobs, err := r.readTagsFromMetadataSubquery(ctx, subquery)
 
 	if err != nil {
 		return nil, err
@@ -135,9 +136,9 @@ func (r databaseRepository) GetBlobMetadata(subject string, id uuid.UUID) (*core
 	return &blobs[0], nil
 }
 
-func (r databaseRepository) SearchBlobMetadata(tags map[string][]string, at *time.Time, ct *core.ContinutationToken, pageSize int) ([]core.BlobInfo, *core.ContinutationToken, error) {
+func (r databaseRepository) SearchBlobMetadata(ctx context.Context, tags map[string][]string, at *time.Time, ct *core.ContinutationToken, pageSize int) ([]core.BlobInfo, *core.ContinutationToken, error) {
 
-	subquery := r.db.Model(&blobMetadata{})
+	subquery := r.db.WithContext(ctx).Model(&blobMetadata{})
 
 	for k, values := range tags {
 		switch k {
@@ -174,7 +175,7 @@ func (r databaseRepository) SearchBlobMetadata(tags map[string][]string, at *tim
 		}
 	}
 
-	results, err := r.readTagsFromMetadataSubquery(subquery)
+	results, err := r.readTagsFromMetadataSubquery(ctx, subquery)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -216,20 +217,20 @@ func fromContinuationToken(ct core.ContinutationToken) (continuation, error) {
 	return c, err
 }
 
-func (r databaseRepository) readTagsFromMetadataSubquery(subquery *gorm.DB) ([]core.BlobInfo, error) {
+func (r databaseRepository) readTagsFromMetadataSubquery(ctx context.Context, subquery *gorm.DB) ([]core.BlobInfo, error) {
 
-	rows, err := r.db.Table("(?) as md", subquery).
-		Select(`md.subject, 
-				md.id, 
-				md.device, 
-				md.name, 
-				md.session, 
-				md.content_type, 
-				md.created_at, 
-				custom_blob_metadata.tag_name, 
+	rows, err := r.db.WithContext(ctx).Table("(?) as md", subquery).
+		Select(`md.subject,
+				md.id,
+				md.device,
+				md.name,
+				md.session,
+				md.content_type,
+				md.created_at,
+				custom_blob_metadata.tag_name,
 				custom_blob_metadata.tag_value`).
-		Joins(`LEFT JOIN custom_blob_metadata 
-				ON custom_blob_metadata.blob_subject = md.subject 
+		Joins(`LEFT JOIN custom_blob_metadata
+				ON custom_blob_metadata.blob_subject = md.subject
 				AND custom_blob_metadata.blob_id = md.id`).
 		Order("md.created_at DESC, md.id DESC").
 		Rows()

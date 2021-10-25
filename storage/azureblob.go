@@ -61,15 +61,15 @@ func NewAzureBlobStore(connectionString string) (core.BlobStore, error) {
 	return &azureBlobStore{containerUrl: containerUrl}, nil
 }
 
-func (s *azureBlobStore) SaveBlob(contents io.Reader, subject string, id uuid.UUID) error {
+func (s *azureBlobStore) SaveBlob(ctx context.Context, contents io.Reader, subject string, id uuid.UUID) error {
 	blobUrl := s.containerUrl.NewBlockBlobURL(blobName(subject, id))
 	_, err := azblob.UploadStreamToBlockBlob(context.Background(), contents, blobUrl, azblob.UploadStreamToBlockBlobOptions{})
 	return err
 }
 
-func (s *azureBlobStore) ReadBlob(writer io.Writer, subject string, id uuid.UUID) error {
+func (s *azureBlobStore) ReadBlob(ctx context.Context, writer io.Writer, subject string, id uuid.UUID) error {
 	blobUrl := s.containerUrl.NewBlockBlobURL(blobName(subject, id))
-	downloadResponse, err := blobUrl.Download(context.Background(), 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false, azblob.ClientProvidedKeyOptions{})
+	downloadResponse, err := blobUrl.Download(ctx, 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false, azblob.ClientProvidedKeyOptions{})
 	if err != nil {
 		return err
 	}

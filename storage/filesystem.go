@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bufio"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -24,7 +25,7 @@ func NewFileSystemStore(rootDir string) (core.BlobStore, error) {
 	return fileSystemStore{rootDir: rootDir}, nil
 }
 
-func (s fileSystemStore) SaveBlob(contents io.Reader, subject string, id uuid.UUID) error {
+func (s fileSystemStore) SaveBlob(ctx context.Context, contents io.Reader, subject string, id uuid.UUID) error {
 
 	filePath := s.filename(subject, id)
 
@@ -43,7 +44,7 @@ func (s fileSystemStore) SaveBlob(contents io.Reader, subject string, id uuid.UU
 	return err
 }
 
-func (s fileSystemStore) ReadBlob(writer io.Writer, subject string, id uuid.UUID) error {
+func (s fileSystemStore) ReadBlob(ctx context.Context, writer io.Writer, subject string, id uuid.UUID) error {
 	filePath := s.filename(subject, id)
 
 	f, err := os.Open(filePath)

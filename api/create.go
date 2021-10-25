@@ -61,13 +61,13 @@ func (handler *Handler) CreateBlob(w http.ResponseWriter, r *http.Request) {
 		log.Panic(err)
 	}
 
-	if err := handler.store.SaveBlob(r.Body, tags.Subject, id); err != nil {
+	if err := handler.store.SaveBlob(r.Context(), r.Body, tags.Subject, id); err != nil {
 		log.Errorf("Failed to save blob: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	if err := handler.db.CreateBlobMetadata(id, &tags); err != nil {
+	if err := handler.db.CreateBlobMetadata(r.Context(), id, &tags); err != nil {
 		log.Errorf("Failed to write blob metadata to database: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return

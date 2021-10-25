@@ -19,7 +19,7 @@ func (handler *Handler) ReadBlob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	blobInfo, err := handler.db.GetBlobMetadata(subject, id)
+	blobInfo, err := handler.db.GetBlobMetadata(r.Context(), subject, id)
 	if err != nil {
 		if errors.Is(err, database.ErrRecordNotFound) {
 			w.WriteHeader(http.StatusNotFound)
@@ -31,14 +31,14 @@ func (handler *Handler) ReadBlob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	handler.BlobResponse(w, blobInfo)
+	handler.BlobResponse(w, r, blobInfo)
 }
 
-func (handler *Handler) BlobResponse(w http.ResponseWriter, blobInfo *core.BlobInfo) {
+func (handler *Handler) BlobResponse(w http.ResponseWriter, r *http.Request, blobInfo *core.BlobInfo) {
 
 	writeTagsAsHeaders(w, blobInfo)
 
-	if err := handler.store.ReadBlob(w, blobInfo.Tags.Subject, blobInfo.Id); err != nil {
+	if err := handler.store.ReadBlob(r.Context(), w, blobInfo.Tags.Subject, blobInfo.Id); err != nil {
 		log.Errorf("Failed to read blob from storage: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return

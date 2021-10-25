@@ -25,7 +25,7 @@ func TestStorageWriteFailureSkipsMetadataWrite(t *testing.T) {
 	mockBlobStore := mocks.NewMockBlobStore(mockCtrl)
 
 	mockBlobStore.EXPECT().
-		SaveBlob(gomock.Any(), gomock.Any(), gomock.Any()).
+		SaveBlob(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(errors.New("failed to write"))
 
 	handler := Handler{db: mockMetadataDatabase, store: mockBlobStore}

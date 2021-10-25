@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	context "context"
 	io "io"
 	reflect "reflect"
 	time "time"
@@ -38,38 +39,38 @@ func (m *MockMetadataDatabase) EXPECT() *MockMetadataDatabaseMockRecorder {
 }
 
 // CreateBlobMetadata mocks base method.
-func (m *MockMetadataDatabase) CreateBlobMetadata(arg0 uuid.UUID, arg1 *core.BlobTags) error {
+func (m *MockMetadataDatabase) CreateBlobMetadata(arg0 context.Context, arg1 uuid.UUID, arg2 *core.BlobTags) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateBlobMetadata", arg0, arg1)
+	ret := m.ctrl.Call(m, "CreateBlobMetadata", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateBlobMetadata indicates an expected call of CreateBlobMetadata.
-func (mr *MockMetadataDatabaseMockRecorder) CreateBlobMetadata(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockMetadataDatabaseMockRecorder) CreateBlobMetadata(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).CreateBlobMetadata), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).CreateBlobMetadata), arg0, arg1, arg2)
 }
 
 // GetBlobMetadata mocks base method.
-func (m *MockMetadataDatabase) GetBlobMetadata(arg0 string, arg1 uuid.UUID) (*core.BlobInfo, error) {
+func (m *MockMetadataDatabase) GetBlobMetadata(arg0 context.Context, arg1 string, arg2 uuid.UUID) (*core.BlobInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBlobMetadata", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetBlobMetadata", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*core.BlobInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetBlobMetadata indicates an expected call of GetBlobMetadata.
-func (mr *MockMetadataDatabaseMockRecorder) GetBlobMetadata(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockMetadataDatabaseMockRecorder) GetBlobMetadata(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).GetBlobMetadata), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).GetBlobMetadata), arg0, arg1, arg2)
 }
 
 // SearchBlobMetadata mocks base method.
-func (m *MockMetadataDatabase) SearchBlobMetadata(arg0 map[string][]string, arg1 *time.Time, arg2 *core.ContinutationToken, arg3 int) ([]core.BlobInfo, *core.ContinutationToken, error) {
+func (m *MockMetadataDatabase) SearchBlobMetadata(arg0 context.Context, arg1 map[string][]string, arg2 *time.Time, arg3 *core.ContinutationToken, arg4 int) ([]core.BlobInfo, *core.ContinutationToken, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SearchBlobMetadata", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "SearchBlobMetadata", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].([]core.BlobInfo)
 	ret1, _ := ret[1].(*core.ContinutationToken)
 	ret2, _ := ret[2].(error)
@@ -77,9 +78,9 @@ func (m *MockMetadataDatabase) SearchBlobMetadata(arg0 map[string][]string, arg1
 }
 
 // SearchBlobMetadata indicates an expected call of SearchBlobMetadata.
-func (mr *MockMetadataDatabaseMockRecorder) SearchBlobMetadata(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockMetadataDatabaseMockRecorder) SearchBlobMetadata(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).SearchBlobMetadata), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).SearchBlobMetadata), arg0, arg1, arg2, arg3, arg4)
 }
 
 // MockBlobStore is a mock of BlobStore interface.
@@ -106,29 +107,29 @@ func (m *MockBlobStore) EXPECT() *MockBlobStoreMockRecorder {
 }
 
 // ReadBlob mocks base method.
-func (m *MockBlobStore) ReadBlob(arg0 io.Writer, arg1 string, arg2 uuid.UUID) error {
+func (m *MockBlobStore) ReadBlob(arg0 context.Context, arg1 io.Writer, arg2 string, arg3 uuid.UUID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadBlob", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "ReadBlob", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ReadBlob indicates an expected call of ReadBlob.
-func (mr *MockBlobStoreMockRecorder) ReadBlob(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockBlobStoreMockRecorder) ReadBlob(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadBlob", reflect.TypeOf((*MockBlobStore)(nil).ReadBlob), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadBlob", reflect.TypeOf((*MockBlobStore)(nil).ReadBlob), arg0, arg1, arg2, arg3)
 }
 
 // SaveBlob mocks base method.
-func (m *MockBlobStore) SaveBlob(arg0 io.Reader, arg1 string, arg2 uuid.UUID) error {
+func (m *MockBlobStore) SaveBlob(arg0 context.Context, arg1 io.Reader, arg2 string, arg3 uuid.UUID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveBlob", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "SaveBlob", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveBlob indicates an expected call of SaveBlob.
-func (mr *MockBlobStoreMockRecorder) SaveBlob(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockBlobStoreMockRecorder) SaveBlob(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveBlob", reflect.TypeOf((*MockBlobStore)(nil).SaveBlob), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveBlob", reflect.TypeOf((*MockBlobStore)(nil).SaveBlob), arg0, arg1, arg2, arg3)
 }

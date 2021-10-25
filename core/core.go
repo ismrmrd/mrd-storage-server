@@ -3,6 +3,7 @@ package core
 //go:generate mockgen -destination ../mocks/mocks_core.go -package=mocks github.com/ismrmrd/mrd-storage-api/core MetadataDatabase,BlobStore
 
 import (
+	"context"
 	"io"
 	"time"
 
@@ -31,12 +32,12 @@ func UnixTimeMsToTime(timeValueMs int64) time.Time {
 }
 
 type MetadataDatabase interface {
-	CreateBlobMetadata(id uuid.UUID, tags *BlobTags) error
-	GetBlobMetadata(subject string, id uuid.UUID) (*BlobInfo, error)
-	SearchBlobMetadata(tags map[string][]string, at *time.Time, ct *ContinutationToken, pageSize int) ([]BlobInfo, *ContinutationToken, error)
+	CreateBlobMetadata(ctx context.Context, id uuid.UUID, tags *BlobTags) error
+	GetBlobMetadata(ctx context.Context, subject string, id uuid.UUID) (*BlobInfo, error)
+	SearchBlobMetadata(ctx context.Context, tags map[string][]string, at *time.Time, ct *ContinutationToken, pageSize int) ([]BlobInfo, *ContinutationToken, error)
 }
 
 type BlobStore interface {
-	SaveBlob(contents io.Reader, subject string, id uuid.UUID) error
-	ReadBlob(writer io.Writer, subject string, id uuid.UUID) error
+	SaveBlob(ctx context.Context, contents io.Reader, subject string, id uuid.UUID) error
+	ReadBlob(ctx context.Context, writer io.Writer, subject string, id uuid.UUID) error
 }
