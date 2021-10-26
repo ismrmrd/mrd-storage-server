@@ -6,22 +6,21 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/ismrmrd/mrd-storage-api/core"
-	"github.com/ismrmrd/mrd-storage-api/database"
 	log "github.com/sirupsen/logrus"
 	"github.com/xorcare/pointer"
 )
 
 func (handler *Handler) ReadBlob(w http.ResponseWriter, r *http.Request) {
 	combinedId := chi.URLParam(r, "combined-id")
-	subject, id, ok := getBlobSubjectAndIdFromCombinedId(combinedId)
+	key, ok := getBlobSubjectAndIdFromCombinedId(combinedId)
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	blobInfo, err := handler.db.GetBlobMetadata(r.Context(), subject, id)
+	blobInfo, err := handler.db.GetBlobMetadata(r.Context(), key)
 	if err != nil {
-		if errors.Is(err, database.ErrRecordNotFound) {
+		if errors.Is(err, core.ErrRecordNotFound) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -38,7 +37,7 @@ func (handler *Handler) BlobResponse(w http.ResponseWriter, r *http.Request, blo
 
 	writeTagsAsHeaders(w, blobInfo)
 
-	if err := handler.store.ReadBlob(r.Context(), w, blobInfo.Tags.Subject, blobInfo.Id); err != nil {
+	if err := handler.store.ReadBlob(r.Context(), w, blobInfo.Key); err != nil {
 		log.Errorf("Failed to read blob from storage: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -56,7 +55,7 @@ func writeTagsAsHeaders(w http.ResponseWriter, blobInfo *core.BlobInfo) {
 	addSystemTagIfSet(w, "Device", blobInfo.Tags.Device)
 	addSystemTagIfSet(w, "Name", blobInfo.Tags.Name)
 	addSystemTagIfSet(w, "Session", blobInfo.Tags.Session)
-	addSystemTagIfSet(w, "Subject", &blobInfo.Tags.Subject)
+	addSystemTagIfSet(w, "Subject", &blobInfo.Key.Subject)
 
 	for tagName, tagValues := range blobInfo.Tags.CustomTags {
 		// Performing Add() on each entry instead of direcly assigning to the map

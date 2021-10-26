@@ -10,7 +10,6 @@ import (
 	reflect "reflect"
 	time "time"
 
-	uuid "github.com/gofrs/uuid"
 	gomock "github.com/golang/mock/gomock"
 	core "github.com/ismrmrd/mrd-storage-api/core"
 )
@@ -38,33 +37,62 @@ func (m *MockMetadataDatabase) EXPECT() *MockMetadataDatabaseMockRecorder {
 	return m.recorder
 }
 
-// CreateBlobMetadata mocks base method.
-func (m *MockMetadataDatabase) CreateBlobMetadata(arg0 context.Context, arg1 uuid.UUID, arg2 *core.BlobTags) error {
+// CompleteStagedBlobMetadata mocks base method.
+func (m *MockMetadataDatabase) CompleteStagedBlobMetadata(arg0 context.Context, arg1 core.BlobKey) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateBlobMetadata", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "CompleteStagedBlobMetadata", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// CreateBlobMetadata indicates an expected call of CreateBlobMetadata.
-func (mr *MockMetadataDatabaseMockRecorder) CreateBlobMetadata(arg0, arg1, arg2 interface{}) *gomock.Call {
+// CompleteStagedBlobMetadata indicates an expected call of CompleteStagedBlobMetadata.
+func (mr *MockMetadataDatabaseMockRecorder) CompleteStagedBlobMetadata(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).CreateBlobMetadata), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompleteStagedBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).CompleteStagedBlobMetadata), arg0, arg1)
 }
 
 // GetBlobMetadata mocks base method.
-func (m *MockMetadataDatabase) GetBlobMetadata(arg0 context.Context, arg1 string, arg2 uuid.UUID) (*core.BlobInfo, error) {
+func (m *MockMetadataDatabase) GetBlobMetadata(arg0 context.Context, arg1 core.BlobKey) (*core.BlobInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBlobMetadata", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "GetBlobMetadata", arg0, arg1)
 	ret0, _ := ret[0].(*core.BlobInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetBlobMetadata indicates an expected call of GetBlobMetadata.
-func (mr *MockMetadataDatabaseMockRecorder) GetBlobMetadata(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockMetadataDatabaseMockRecorder) GetBlobMetadata(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).GetBlobMetadata), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).GetBlobMetadata), arg0, arg1)
+}
+
+// GetPageOfExpiredStagedBlobMetadata mocks base method.
+func (m *MockMetadataDatabase) GetPageOfExpiredStagedBlobMetadata(arg0 context.Context, arg1 time.Time) ([]core.BlobKey, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPageOfExpiredStagedBlobMetadata", arg0, arg1)
+	ret0, _ := ret[0].([]core.BlobKey)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPageOfExpiredStagedBlobMetadata indicates an expected call of GetPageOfExpiredStagedBlobMetadata.
+func (mr *MockMetadataDatabaseMockRecorder) GetPageOfExpiredStagedBlobMetadata(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPageOfExpiredStagedBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).GetPageOfExpiredStagedBlobMetadata), arg0, arg1)
+}
+
+// RevertStagedBlobMetadata mocks base method.
+func (m *MockMetadataDatabase) RevertStagedBlobMetadata(arg0 context.Context, arg1 core.BlobKey) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RevertStagedBlobMetadata", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RevertStagedBlobMetadata indicates an expected call of RevertStagedBlobMetadata.
+func (mr *MockMetadataDatabaseMockRecorder) RevertStagedBlobMetadata(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevertStagedBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).RevertStagedBlobMetadata), arg0, arg1)
 }
 
 // SearchBlobMetadata mocks base method.
@@ -81,6 +109,20 @@ func (m *MockMetadataDatabase) SearchBlobMetadata(arg0 context.Context, arg1 map
 func (mr *MockMetadataDatabaseMockRecorder) SearchBlobMetadata(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).SearchBlobMetadata), arg0, arg1, arg2, arg3, arg4)
+}
+
+// StageBlobMetadata mocks base method.
+func (m *MockMetadataDatabase) StageBlobMetadata(arg0 context.Context, arg1 core.BlobKey, arg2 *core.BlobTags) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StageBlobMetadata", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StageBlobMetadata indicates an expected call of StageBlobMetadata.
+func (mr *MockMetadataDatabaseMockRecorder) StageBlobMetadata(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StageBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).StageBlobMetadata), arg0, arg1, arg2)
 }
 
 // MockBlobStore is a mock of BlobStore interface.
@@ -106,30 +148,44 @@ func (m *MockBlobStore) EXPECT() *MockBlobStoreMockRecorder {
 	return m.recorder
 }
 
-// ReadBlob mocks base method.
-func (m *MockBlobStore) ReadBlob(arg0 context.Context, arg1 io.Writer, arg2 string, arg3 uuid.UUID) error {
+// DeleteBlob mocks base method.
+func (m *MockBlobStore) DeleteBlob(arg0 context.Context, arg1 core.BlobKey) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReadBlob", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "DeleteBlob", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteBlob indicates an expected call of DeleteBlob.
+func (mr *MockBlobStoreMockRecorder) DeleteBlob(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteBlob", reflect.TypeOf((*MockBlobStore)(nil).DeleteBlob), arg0, arg1)
+}
+
+// ReadBlob mocks base method.
+func (m *MockBlobStore) ReadBlob(arg0 context.Context, arg1 io.Writer, arg2 core.BlobKey) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadBlob", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ReadBlob indicates an expected call of ReadBlob.
-func (mr *MockBlobStoreMockRecorder) ReadBlob(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockBlobStoreMockRecorder) ReadBlob(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadBlob", reflect.TypeOf((*MockBlobStore)(nil).ReadBlob), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadBlob", reflect.TypeOf((*MockBlobStore)(nil).ReadBlob), arg0, arg1, arg2)
 }
 
 // SaveBlob mocks base method.
-func (m *MockBlobStore) SaveBlob(arg0 context.Context, arg1 io.Reader, arg2 string, arg3 uuid.UUID) error {
+func (m *MockBlobStore) SaveBlob(arg0 context.Context, arg1 io.Reader, arg2 core.BlobKey) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveBlob", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "SaveBlob", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveBlob indicates an expected call of SaveBlob.
-func (mr *MockBlobStoreMockRecorder) SaveBlob(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockBlobStoreMockRecorder) SaveBlob(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveBlob", reflect.TypeOf((*MockBlobStore)(nil).SaveBlob), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveBlob", reflect.TypeOf((*MockBlobStore)(nil).SaveBlob), arg0, arg1, arg2)
 }

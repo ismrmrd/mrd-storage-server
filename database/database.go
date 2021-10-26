@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -20,19 +19,15 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-var (
-	ErrInvalidContinuationToken = errors.New("invalid continuation token")
-	ErrRecordNotFound           = errors.New("record not found")
-)
-
 type blobMetadata struct {
-	Subject     string               `gorm:"size:64;not null;primaryKey;index:idx_blob_metadata_search,priority:1"`
-	Id          uuid.UUID            `gorm:"type:uuid;primaryKey;index:idx_blob_metadata_search,priority:5"`
-	Device      sql.NullString       `gorm:"size:64;index:idx_blob_metadata_search,priority:2"`
-	Name        sql.NullString       `gorm:"size:64;index:idx_blob_metadata_search,priority:3"`
-	Session     sql.NullString       `gorm:"size:64;"`
-	ContentType sql.NullString       `gorm:"size:64;"`
-	CreatedAt   int64                `gorm:"autoCreateTime:milli;index:idx_blob_metadata_search,priority:4"`
+	Subject     string         `gorm:"size:64;not null;primaryKey;index:idx_blob_metadata_search,priority:1"`
+	Id          uuid.UUID      `gorm:"type:uuid;primaryKey;index:idx_blob_metadata_search,priority:5"`
+	Device      sql.NullString `gorm:"size:64;index:idx_blob_metadata_search,priority:2"`
+	Name        sql.NullString `gorm:"size:64;index:idx_blob_metadata_search,priority:3"`
+	Session     sql.NullString `gorm:"size:64;"`
+	ContentType sql.NullString `gorm:"size:64;"`
+	CreatedAt   int64          `gorm:"autoCreateTime:milli;index:idx_blob_metadata_search,priority:4;index:staged,where:staged = true"`
+	Staged      bool
 	CustomTags  []customBlobMetadata `gorm:"foreignKey:BlobSubject,BlobId;references:Subject,Id;constraint:OnDelete:CASCADE"`
 }
 
@@ -74,6 +69,9 @@ func createRepository(dialector gorm.Dialector) (core.MetadataDatabase, error) {
 	db, err := gorm.Open(dialector, &gorm.Config{
 		Logger:                 logger.Default.LogMode(logger.Warn),
 		SkipDefaultTransaction: true,
+		NowFunc: func() time.Time {
+			return time.Now().UTC()
+		},
 	})
 
 	if err != nil {
@@ -83,14 +81,15 @@ func createRepository(dialector gorm.Dialector) (core.MetadataDatabase, error) {
 	return databaseRepository{db: db}, db.AutoMigrate(&blobMetadata{}, &customBlobMetadata{})
 }
 
-func (r databaseRepository) CreateBlobMetadata(ctx context.Context, id uuid.UUID, tags *core.BlobTags) error {
+func (r databaseRepository) StageBlobMetadata(ctx context.Context, key core.BlobKey, tags *core.BlobTags) error {
 	metadata := blobMetadata{
-		Subject:     tags.Subject,
-		Id:          id,
+		Subject:     key.Subject,
+		Id:          key.Id,
 		Device:      toNullString(tags.Device),
 		Name:        toNullString(tags.Name),
 		Session:     toNullString(tags.Session),
 		ContentType: toNullString(tags.ContentType),
+		Staged:      true,
 	}
 
 	if len(tags.CustomTags) == 0 {
@@ -107,8 +106,8 @@ func (r databaseRepository) CreateBlobMetadata(ctx context.Context, id uuid.UUID
 		for tagName, tagValues := range tags.CustomTags {
 			for _, tagValue := range tagValues {
 				item := customBlobMetadata{
-					BlobSubject: tags.Subject,
-					BlobId:      id,
+					BlobSubject: key.Subject,
+					BlobId:      key.Id,
 					TagName:     strings.ToLower(tagName),
 					TagValue:    tagValue,
 				}
@@ -121,8 +120,36 @@ func (r databaseRepository) CreateBlobMetadata(ctx context.Context, id uuid.UUID
 	})
 }
 
-func (r databaseRepository) GetBlobMetadata(ctx context.Context, subject string, id uuid.UUID) (*core.BlobInfo, error) {
-	subquery := r.db.WithContext(ctx).Model(&blobMetadata{}).Where("subject = ? AND id = ?", subject, id)
+func (r databaseRepository) RevertStagedBlobMetadata(ctx context.Context, key core.BlobKey) error {
+	res := r.db.WithContext(ctx).
+		Where("subject = ? AND id = ? AND staged = ?", key.Subject, key.Id, true).
+		Delete(&blobMetadata{})
+
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return core.ErrStagedRecordNotFound
+	}
+
+	return nil
+}
+
+func (r databaseRepository) CompleteStagedBlobMetadata(ctx context.Context, key core.BlobKey) error {
+	res := r.db.WithContext(ctx).Model(&blobMetadata{}).Where("subject = ? AND id = ? AND staged = ?", key.Subject, key.Id, true).Update("staged", false)
+
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return core.ErrStagedRecordNotFound
+	}
+
+	return nil
+}
+
+func (r databaseRepository) GetBlobMetadata(ctx context.Context, key core.BlobKey) (*core.BlobInfo, error) {
+	subquery := r.db.WithContext(ctx).Model(&blobMetadata{}).Where("subject = ? AND id = ?", key.Subject, key.Id)
 	blobs, err := r.readTagsFromMetadataSubquery(ctx, subquery)
 
 	if err != nil {
@@ -130,7 +157,7 @@ func (r databaseRepository) GetBlobMetadata(ctx context.Context, subject string,
 	}
 
 	if len(blobs) == 0 {
-		return nil, ErrRecordNotFound
+		return nil, core.ErrRecordNotFound
 	}
 
 	return &blobs[0], nil
@@ -165,7 +192,7 @@ func (r databaseRepository) SearchBlobMetadata(ctx context.Context, tags map[str
 	if ct != nil {
 		c, err := fromContinuationToken(*ct)
 		if err != nil {
-			return nil, nil, ErrInvalidContinuationToken
+			return nil, nil, core.ErrInvalidContinuationToken
 		}
 
 		if c.Id == nil {
@@ -188,7 +215,7 @@ func (r databaseRepository) SearchBlobMetadata(ctx context.Context, tags map[str
 		if lastResult.CreatedAt == nextResult.CreatedAt {
 			// the timestamp is the same between the last entry of this page and the first entry of the next page
 			// so we will need to include the ID in the continuation token
-			c = continuation{lastResult.CreatedAt.UnixMilli(), &lastResult.Id}
+			c = continuation{lastResult.CreatedAt.UnixMilli(), &lastResult.Key.Id}
 		} else {
 			// the common path, where we will be able to generate a simpler WHERE clause
 			c = continuation{lastResult.CreatedAt.UnixMilli(), nil}
@@ -200,6 +227,36 @@ func (r databaseRepository) SearchBlobMetadata(ctx context.Context, tags map[str
 	}
 
 	return results, nil, nil
+}
+
+func (r databaseRepository) GetPageOfExpiredStagedBlobMetadata(ctx context.Context, olderThan time.Time) ([]core.BlobKey, error) {
+	rows, err := r.db.
+		Model(blobMetadata{}).
+		Select(`subject, id`).
+		Where(`staged = ? AND created_at < ?`, true, olderThan.UnixMilli()).
+		Order("created_at ASC").
+		Limit(200).
+		Rows()
+
+	if err != nil {
+		return nil, err
+	}
+
+	keys := make([]core.BlobKey, 0)
+
+	for rows.Next() {
+		key := core.BlobKey{}
+
+		err = rows.Scan(&key.Subject, &key.Id)
+		if err != nil {
+			return nil, err
+		}
+
+		keys = append(keys, key)
+	}
+
+	// with the reader closed and the locks released, yield the results
+	return keys, nil
 }
 
 func toContinuationToken(c continuation) core.ContinutationToken {
@@ -232,6 +289,7 @@ func (r databaseRepository) readTagsFromMetadataSubquery(ctx context.Context, su
 		Joins(`LEFT JOIN custom_blob_metadata
 				ON custom_blob_metadata.blob_subject = md.subject
 				AND custom_blob_metadata.blob_id = md.id`).
+		Where(`md.staged = ?`, false).
 		Order("md.created_at DESC, md.id DESC").
 		Rows()
 
@@ -252,8 +310,8 @@ func (r databaseRepository) readTagsFromMetadataSubquery(ctx context.Context, su
 		var timeValueMs int64
 
 		err = rows.Scan(
-			&tmpBlobInfo.Tags.Subject,
-			&tmpBlobInfo.Id,
+			&tmpBlobInfo.Key.Subject,
+			&tmpBlobInfo.Key.Id,
 			&tmpBlobInfo.Tags.Device,
 			&tmpBlobInfo.Tags.Name,
 			&tmpBlobInfo.Tags.Session,
@@ -268,7 +326,7 @@ func (r databaseRepository) readTagsFromMetadataSubquery(ctx context.Context, su
 
 		tmpBlobInfo.CreatedAt = core.UnixTimeMsToTime(timeValueMs)
 
-		if currentBlobInfo == nil || currentBlobInfo.Id != tmpBlobInfo.Id {
+		if currentBlobInfo == nil || currentBlobInfo.Key.Id != tmpBlobInfo.Key.Id {
 			results = append(results, tmpBlobInfo)
 			currentBlobInfo = &results[len(results)-1]
 			currentBlobInfo.Tags.CustomTags = make(map[string][]string)

@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
-	"github.com/gofrs/uuid"
 	"github.com/ismrmrd/mrd-storage-api/core"
 )
 
@@ -52,8 +51,7 @@ func NewAzureBlobStore(connectionString string) (core.BlobStore, error) {
 	containerUrl := serviceUrl.NewContainerURL("mrd-storage-api")
 	_, err = containerUrl.Create(context.Background(), azblob.Metadata{}, azblob.PublicAccessNone)
 	if err != nil {
-		if storageErr, ok := err.(azblob.StorageError); ok && storageErr.ServiceCode() == azblob.ServiceCodeContainerAlreadyExists {
-		} else {
+		if storageErr, ok := err.(azblob.StorageError); !ok || storageErr.ServiceCode() != azblob.ServiceCodeContainerAlreadyExists {
 			return nil, err
 		}
 	}
@@ -61,14 +59,14 @@ func NewAzureBlobStore(connectionString string) (core.BlobStore, error) {
 	return &azureBlobStore{containerUrl: containerUrl}, nil
 }
 
-func (s *azureBlobStore) SaveBlob(ctx context.Context, contents io.Reader, subject string, id uuid.UUID) error {
-	blobUrl := s.containerUrl.NewBlockBlobURL(blobName(subject, id))
+func (s *azureBlobStore) SaveBlob(ctx context.Context, contents io.Reader, key core.BlobKey) error {
+	blobUrl := s.containerUrl.NewBlockBlobURL(blobName(key))
 	_, err := azblob.UploadStreamToBlockBlob(context.Background(), contents, blobUrl, azblob.UploadStreamToBlockBlobOptions{})
 	return err
 }
 
-func (s *azureBlobStore) ReadBlob(ctx context.Context, writer io.Writer, subject string, id uuid.UUID) error {
-	blobUrl := s.containerUrl.NewBlockBlobURL(blobName(subject, id))
+func (s *azureBlobStore) ReadBlob(ctx context.Context, writer io.Writer, key core.BlobKey) error {
+	blobUrl := s.containerUrl.NewBlockBlobURL(blobName(key))
 	downloadResponse, err := blobUrl.Download(ctx, 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false, azblob.ClientProvidedKeyOptions{})
 	if err != nil {
 		return err
@@ -79,8 +77,23 @@ func (s *azureBlobStore) ReadBlob(ctx context.Context, writer io.Writer, subject
 	return err
 }
 
-func blobName(subject string, id uuid.UUID) string {
+func (s *azureBlobStore) DeleteBlob(ctx context.Context, key core.BlobKey) error {
+	blobUrl := s.containerUrl.NewBlockBlobURL(blobName(key))
+
+	_, err := blobUrl.Delete(ctx, azblob.DeleteSnapshotsOptionNone, azblob.BlobAccessConditions{})
+	if err != nil {
+		if storageErr, ok := err.(azblob.StorageError); ok && storageErr.ServiceCode() == azblob.ServiceCodeBlobNotFound {
+			return core.ErrBlobNotFound
+		} else {
+			return err
+		}
+	}
+
+	return err
+}
+
+func blobName(key core.BlobKey) string {
 	// make sure we don't have file names / or .. or anything like that
-	encodedSubject := base64.RawURLEncoding.EncodeToString([]byte(subject))
-	return path.Join(encodedSubject, id.String())
+	encodedSubject := base64.RawURLEncoding.EncodeToString([]byte(key.Subject))
+	return path.Join(encodedSubject, key.Id.String())
 }

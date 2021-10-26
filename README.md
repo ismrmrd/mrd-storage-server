@@ -235,5 +235,3 @@ Connection: close
 - Support TTL on blobs
 - Swagger
 - Health check
-- Versioning
-- Cleanup orphaned blobs

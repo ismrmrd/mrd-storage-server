@@ -1,15 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
-	urlPkg "net/url"
+	gourl "net/url"
 	"os"
 	"path"
 	"reflect"
@@ -17,20 +16,28 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
+	"github.com/gofrs/uuid"
 	"github.com/ismrmrd/mrd-storage-api/api"
 	"github.com/ismrmrd/mrd-storage-api/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var router http.Handler
-var remoteUrl *urlPkg.URL
+var (
+	db        core.MetadataDatabase
+	blobStore core.BlobStore
+	router    http.Handler
+	remoteUrl *gourl.URL
+)
 
 func init() {
+	log.SetOutput(ioutil.Discard)
 
 	if remoteUrlVar := os.Getenv("TEST_REMOTE_URL"); remoteUrlVar != "" {
 		var err error
-		remoteUrl, err = url.Parse(remoteUrlVar)
+		remoteUrl, err = gourl.Parse(remoteUrlVar)
 		if err != nil {
 			log.Fatalf("Invalid TEST_REMOTE_URL value")
 		}
@@ -65,12 +72,13 @@ func init() {
 		log.Fatalf("Unrecognized TEST_STORAGE_PROVIDER environment variable '%s'", storageProvider)
 	}
 
-	_router, err := assembleHandler(config)
+	var err error
+	db, blobStore, err = assembleDataStores(config)
 	if err != nil {
 		log.Fatal(err)
-		os.Exit(1)
 	}
-	router = _router
+
+	router = assembleHandler(db, blobStore, config)
 }
 
 func TestInvalidTags(t *testing.T) {
@@ -112,7 +120,7 @@ func TestCreateValidBlob(t *testing.T) {
 
 	// Create the blob
 	createResp := create(t, fmt.Sprintf("subject=%s&name=myname&device=mydevice", subject), "", bodyContents)
-	assert.Equal(t, http.StatusCreated, createResp.StatusCode)
+	require.Equal(t, http.StatusCreated, createResp.StatusCode)
 
 	// now read the blob using the Location header in the response
 	location := createResp.Location
@@ -122,7 +130,7 @@ func TestCreateValidBlob(t *testing.T) {
 	assert.Equal(t, bodyContents, readResp.Body)
 	assert.Equal(t, "application/octet-stream", *readResp.Tags.ContentType)
 	assert.NotNil(t, readResp.CreatedAt)
-	assert.Equal(t, subject, readResp.Tags.Subject)
+	assert.Equal(t, subject, readResp.Subject)
 	assert.Equal(t, "myname", *readResp.Tags.Name)
 	assert.Equal(t, "mydevice", *readResp.Tags.Device)
 	assert.Nil(t, readResp.Tags.Session)
@@ -144,7 +152,7 @@ func TestCreateValidBlobCustomTags(t *testing.T) {
 		fmt.Sprintf("subject=%s&session=mysession&customtag1=customTag1Value&customTag2=customTag2Value1&customTag2=customTag2Value2", subject),
 		"text/plain",
 		bodyContents)
-	assert.Equal(t, http.StatusCreated, createResp.StatusCode)
+	require.Equal(t, http.StatusCreated, createResp.StatusCode)
 
 	// now read the blob using the Location header in the response
 	location := createResp.Location
@@ -155,7 +163,7 @@ func TestCreateValidBlobCustomTags(t *testing.T) {
 
 	assert.Equal(t, "text/plain", *readResp.Tags.ContentType)
 	assert.NotNil(t, readResp.CreatedAt)
-	assert.Equal(t, subject, readResp.Tags.Subject)
+	assert.Equal(t, subject, readResp.Subject)
 	assert.Equal(t, "mysession", *readResp.Tags.Session)
 
 	assert.ElementsMatch(t, []string{"customTag1Value"}, readResp.Tags.CustomTags["Customtag1"])
@@ -356,6 +364,11 @@ func populateBlobResponse(resp *http.Response) ReadResponse {
 
 	headers := resp.Header
 
+	if subject, ok := headers[api.TagHeaderName("Subject")]; ok {
+		readResponse.Subject = subject[0]
+		delete(headers, "Subject")
+	}
+
 	if contentType, ok := headers["Content-Type"]; ok {
 		readResponse.Tags.ContentType = &contentType[0]
 		delete(headers, "Content-Type")
@@ -402,7 +415,7 @@ func executeRequest(method string, url string, headers http.Header, body io.Read
 		return resp.Result(), nil
 	}
 
-	parsedUrl, err := urlPkg.Parse(url)
+	parsedUrl, err := gourl.Parse(url)
 	if err != nil {
 		return nil, err
 	}
@@ -428,6 +441,73 @@ func executeRequest(method string, url string, headers http.Header, body io.Read
 	return http.DefaultClient.Do(request)
 }
 
+func TestGarbageCollection(t *testing.T) {
+	if remoteUrl != nil {
+		// this test only works in-proc
+		return
+	}
+
+	keys := []core.BlobKey{
+		createKey(t, "s1"),
+		createKey(t, "s2"),
+		createKey(t, "s3"),
+	}
+
+	for _, key := range keys {
+		err := db.StageBlobMetadata(context.Background(), key, &core.BlobTags{})
+		require.Nil(t, err)
+		blobStore.SaveBlob(context.Background(), http.NoBody, key)
+	}
+
+	olderThan := time.Now().Add(time.Minute).UTC()
+
+	err := core.CollectGarbage(context.Background(), db, blobStore, olderThan)
+	require.Nil(t, err)
+
+	for _, key := range keys {
+		err := blobStore.ReadBlob(context.Background(), io.Discard, key)
+		assert.ErrorIs(t, err, core.ErrBlobNotFound)
+	}
+}
+
+func TestStagedBlobsAreNotVisible(t *testing.T) {
+	if remoteUrl != nil {
+		// this test only works in-proc
+		return
+	}
+
+	subject := fmt.Sprint(time.Now().UnixNano())
+
+	key := createKey(t, subject)
+	tags := core.BlobTags{CustomTags: make(map[string][]string)}
+
+	err := db.StageBlobMetadata(context.Background(), key, &tags)
+	require.Nil(t, err)
+	err = blobStore.SaveBlob(context.Background(), http.NoBody, key)
+	require.Nil(t, err)
+
+	query := fmt.Sprintf("subject=%s", subject)
+
+	searchResponse := search(t, query)
+	assert.Empty(t, searchResponse.Results.Items)
+	latestResponse := getLatestBlob(t, query)
+	assert.Equal(t, http.StatusNotFound, latestResponse.StatusCode)
+
+	err = db.CompleteStagedBlobMetadata(context.Background(), key)
+	require.Nil(t, err)
+
+	searchResponse = search(t, query)
+	assert.Len(t, searchResponse.Results.Items, 1)
+	latestResponse = getLatestBlob(t, query)
+	assert.Equal(t, http.StatusOK, latestResponse.StatusCode)
+}
+
+func createKey(t *testing.T, subject string) core.BlobKey {
+	id, err := uuid.NewV4()
+	require.Nil(t, err)
+	return core.BlobKey{Subject: subject, Id: id}
+}
+
 type Response struct {
 	StatusCode    int
 	RawResponse   *http.Response
@@ -448,6 +528,7 @@ type ReadResponse struct {
 	Response
 	CreatedAt *time.Time
 	Body      string
+	Subject   string
 	Tags      core.BlobTags
 }
 

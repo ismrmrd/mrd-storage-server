@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/ismrmrd/mrd-storage-api/core"
-	"github.com/ismrmrd/mrd-storage-api/database"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -22,7 +21,7 @@ func (handler *Handler) SearchBlobs(w http.ResponseWriter, r *http.Request) {
 	results, ct, err := handler.db.SearchBlobMetadata(r.Context(), query, at, ct, pageSize)
 
 	if err != nil {
-		if errors.Is(err, database.ErrInvalidContinuationToken) {
+		if errors.Is(err, core.ErrInvalidContinuationToken) {
 			w.WriteHeader(http.StatusBadRequest)
 			writeJson(w, r, CreateErrorResponse("InvalidContinuationToken", "The'_ct' parameter is invalid."))
 			return
@@ -39,7 +38,7 @@ func (handler *Handler) SearchBlobs(w http.ResponseWriter, r *http.Request) {
 		entry := make(map[string]interface{})
 		entry["lastModified"] = res.CreatedAt.Format(time.RFC3339Nano)
 
-		entry["subject"] = res.Tags.Subject
+		entry["subject"] = res.Key.Subject
 		if res.Tags.ContentType != nil {
 			entry["contentType"] = res.Tags.ContentType
 		}
@@ -52,7 +51,7 @@ func (handler *Handler) SearchBlobs(w http.ResponseWriter, r *http.Request) {
 		if res.Tags.Session != nil {
 			entry["session"] = res.Tags.Session
 		}
-		entry["location"] = getBlobUri(r, res.Tags.Subject, res.Id)
+		entry["location"] = getBlobUri(r, res.Key)
 
 		for k, v := range res.Tags.CustomTags {
 			if len(v) == 1 {
@@ -103,7 +102,7 @@ func (handler *Handler) GetLatestBlob(w http.ResponseWriter, r *http.Request) {
 
 	latestBlobInfo := results[0]
 
-	w.Header().Add("Location", getBlobUri(r, latestBlobInfo.Tags.Subject, latestBlobInfo.Id))
+	w.Header().Add("Location", getBlobUri(r, latestBlobInfo.Key))
 
 	handler.BlobResponse(w, r, &latestBlobInfo)
 }

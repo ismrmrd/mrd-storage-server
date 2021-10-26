@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 
-	"github.com/gofrs/uuid"
 	"github.com/ismrmrd/mrd-storage-api/core"
 )
 
@@ -25,9 +26,9 @@ func NewFileSystemStore(rootDir string) (core.BlobStore, error) {
 	return fileSystemStore{rootDir: rootDir}, nil
 }
 
-func (s fileSystemStore) SaveBlob(ctx context.Context, contents io.Reader, subject string, id uuid.UUID) error {
+func (s fileSystemStore) SaveBlob(ctx context.Context, contents io.Reader, key core.BlobKey) error {
 
-	filePath := s.filename(subject, id)
+	filePath := s.filename(key)
 
 	if err := os.Mkdir(path.Dir(filePath), os.ModePerm); err != nil && !os.IsExist(err) {
 		return fmt.Errorf("unable to create directory: %v", err)
@@ -44,11 +45,14 @@ func (s fileSystemStore) SaveBlob(ctx context.Context, contents io.Reader, subje
 	return err
 }
 
-func (s fileSystemStore) ReadBlob(ctx context.Context, writer io.Writer, subject string, id uuid.UUID) error {
-	filePath := s.filename(subject, id)
+func (s fileSystemStore) ReadBlob(ctx context.Context, writer io.Writer, key core.BlobKey) error {
+	filePath := s.filename(key)
 
 	f, err := os.Open(filePath)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return core.ErrBlobNotFound
+		}
 		return err
 	}
 
@@ -58,8 +62,18 @@ func (s fileSystemStore) ReadBlob(ctx context.Context, writer io.Writer, subject
 	return err
 }
 
-func (s fileSystemStore) filename(subject string, id uuid.UUID) string {
+func (s fileSystemStore) DeleteBlob(ctx context.Context, key core.BlobKey) error {
+	filePath := s.filename(key)
+
+	if err := os.Remove(filePath); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+
+	return nil
+}
+
+func (s fileSystemStore) filename(key core.BlobKey) string {
 	// make sure we don't have file names / or .. or anything like that
-	encodedSubject := base64.RawURLEncoding.EncodeToString([]byte(subject))
-	return path.Join(s.rootDir, encodedSubject, id.String())
+	encodedSubject := base64.RawURLEncoding.EncodeToString([]byte(key.Subject))
+	return path.Join(s.rootDir, encodedSubject, key.Id.String())
 }

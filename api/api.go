@@ -93,21 +93,22 @@ func normalizeQueryMapToLowercaseKeys(values url.Values) url.Values {
 	return normalizedValues
 }
 
-func getBlobCombinedId(subject string, id uuid.UUID) string {
-	return fmt.Sprintf("%v-%s", id, subject)
+func getBlobCombinedId(key core.BlobKey) string {
+	return fmt.Sprintf("%v-%s", key.Id, key.Subject)
 }
 
-func getBlobSubjectAndIdFromCombinedId(combinedId string) (subject string, id uuid.UUID, ok bool) {
+func getBlobSubjectAndIdFromCombinedId(combinedId string) (key core.BlobKey, ok bool) {
 	if len(combinedId) >= 37 {
 		id, err := uuid.FromString(combinedId[:36])
 		if err == nil {
-			subject = combinedId[37:]
+			key.Id = id
+			key.Subject = combinedId[37:]
 
-			return subject, id, true
+			return key, true
 		}
 	}
 
-	return "", uuid.Nil, false
+	return
 }
 
 func getBaseUri(r *http.Request) url.URL {
@@ -129,10 +130,10 @@ func getBaseUri(r *http.Request) url.URL {
 	return url
 }
 
-func getBlobUri(r *http.Request, subject string, id uuid.UUID) string {
+func getBlobUri(r *http.Request, key core.BlobKey) string {
 
 	uri := getBaseUri(r)
-	uri.Path = path.Join(uri.Path, "blob", getBlobCombinedId(subject, id))
+	uri.Path = path.Join(uri.Path, "blob", getBlobCombinedId(key))
 
 	return uri.String()
 }
