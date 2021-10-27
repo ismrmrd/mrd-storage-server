@@ -54,7 +54,7 @@ func (handler *Handler) CreateBlob(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		key.Subject = subjectStrings[0]
-		delete(query, "Subject")
+		delete(query, "subject")
 	}
 
 	tags := core.BlobTags{}
