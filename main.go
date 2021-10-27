@@ -109,5 +109,5 @@ type ConfigSpec struct {
 	StorageProvider          string `split_words:"true" default:"filesystem"`
 	StorageConnectionString  string `split_words:"true" default:"./_data/blobs"`
 	Port                     int    `split_words:"true" default:"3333"`
-	LogRequests              bool   `default:"true"`
+	LogRequests              bool   `split_words:"true" default:"true"`
 }
