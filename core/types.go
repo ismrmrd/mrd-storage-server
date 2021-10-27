@@ -12,10 +12,11 @@ import (
 )
 
 var (
-	ErrInvalidContinuationToken = errors.New("invalid continuation token")
-	ErrRecordNotFound           = errors.New("record not found")
-	ErrStagedRecordNotFound     = errors.New("staged metadata not found - was StageBlobMetadata() called beforehand?")
-	ErrBlobNotFound             = errors.New("the blob was not found in the store")
+	ErrInvalidContinuationToken    = errors.New("invalid continuation token")
+	ErrRecordNotFound              = errors.New("record not found")
+	ErrStagedRecordNotFound        = errors.New("staged metadata not found - was StageBlobMetadata() called beforehand?")
+	ErrBlobNotFound                = errors.New("the blob was not found in the store")
+	ErrExistingDatabaseSchemaNewer = errors.New("the existing database schema is newer that what the server supports")
 )
 
 type BlobKey struct {

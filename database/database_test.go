@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"path"
 	"testing"
 
@@ -58,4 +59,38 @@ func TestStagedBlobMetadataCleanedUpOnRevert(t *testing.T) {
 
 	err = db.RevertStagedBlobMetadata(context.Background(), key)
 	assert.ErrorIs(t, err, core.ErrStagedRecordNotFound)
+}
+
+func TestSchemaNotDowngraded(t *testing.T) {
+	dbPath := path.Join(t.TempDir(), "x.db")
+	_, err := OpenSqliteDatabase(dbPath)
+	require.Nil(t, err)
+
+	db, err := sql.Open("sqlite3", dbPath)
+	require.Nil(t, err)
+	defer db.Close()
+
+	sqlStmt := `INSERT INTO schema_versions (version, status) VALUES(99, 'complete');`
+	_, err = db.Exec(sqlStmt)
+	require.Nil(t, err)
+
+	_, err = OpenSqliteDatabase(dbPath)
+	assert.ErrorIs(t, err, core.ErrExistingDatabaseSchemaNewer)
+}
+
+func TestSchemaVersionUpserted(t *testing.T) {
+	dbPath := path.Join(t.TempDir(), "x.db")
+	_, err := OpenSqliteDatabase(dbPath)
+	require.Nil(t, err)
+
+	db, err := sql.Open("sqlite3", dbPath)
+	require.Nil(t, err)
+	defer db.Close()
+
+	sqlStmt := `UPDATE schema_versions SET status = 'unknown';`
+	_, err = db.Exec(sqlStmt)
+	require.Nil(t, err)
+
+	_, err = OpenSqliteDatabase(dbPath)
+	assert.Nil(t, err)
 }

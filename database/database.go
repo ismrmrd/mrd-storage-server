@@ -16,8 +16,19 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 )
+
+const (
+	schemaVersionLatest         = 1
+	schemaVersionCompleteStatus = "complete"
+)
+
+type schemaVersion struct {
+	Version int `gorm:"primaryKey;not null"`
+	Status  string
+}
 
 type blobMetadata struct {
 	Subject     string         `gorm:"size:64;not null;primaryKey;index:idx_blob_metadata_search,priority:1"`
@@ -78,7 +89,35 @@ func createRepository(dialector gorm.Dialector) (core.MetadataDatabase, error) {
 		return nil, err
 	}
 
-	return databaseRepository{db: db}, db.AutoMigrate(&blobMetadata{}, &customBlobMetadata{})
+	repository := databaseRepository{db: db}
+
+	if db.Migrator().HasTable(&schemaVersion{}) {
+		versionInDatabase := schemaVersion{}
+		err := db.Where("status = ?", schemaVersionCompleteStatus).Order("version DESC").Limit(1).Find(&versionInDatabase).Error
+		if err != nil {
+			return nil, err
+		}
+
+		if versionInDatabase.Version > schemaVersionLatest {
+			return nil, core.ErrExistingDatabaseSchemaNewer
+		}
+
+		if versionInDatabase.Version == schemaVersionLatest {
+			return repository, nil
+		}
+	}
+
+	err = db.AutoMigrate(&schemaVersion{}, &blobMetadata{}, &customBlobMetadata{})
+	if err != nil {
+		return nil, err
+	}
+
+	versionInDatabase := schemaVersion{Version: schemaVersionLatest, Status: schemaVersionCompleteStatus}
+
+	// upsert the schema version
+	err = db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&versionInDatabase).Error
+
+	return repository, err
 }
 
 func (r databaseRepository) StageBlobMetadata(ctx context.Context, key core.BlobKey, tags *core.BlobTags) error {
