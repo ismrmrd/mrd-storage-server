@@ -69,7 +69,11 @@ func (s *azureBlobStore) ReadBlob(ctx context.Context, writer io.Writer, key cor
 	blobUrl := s.containerUrl.NewBlockBlobURL(blobName(key))
 	downloadResponse, err := blobUrl.Download(ctx, 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false, azblob.ClientProvidedKeyOptions{})
 	if err != nil {
-		return err
+		if storageErr, ok := err.(azblob.StorageError); ok && storageErr.ServiceCode() == azblob.ServiceCodeBlobNotFound {
+			return core.ErrBlobNotFound
+		} else {
+			return err
+		}
 	}
 
 	bodyStream := downloadResponse.Body(azblob.RetryReaderOptions{MaxRetryRequests: 20})
@@ -80,16 +84,13 @@ func (s *azureBlobStore) ReadBlob(ctx context.Context, writer io.Writer, key cor
 func (s *azureBlobStore) DeleteBlob(ctx context.Context, key core.BlobKey) error {
 	blobUrl := s.containerUrl.NewBlockBlobURL(blobName(key))
 
-	_, err := blobUrl.Delete(ctx, azblob.DeleteSnapshotsOptionNone, azblob.BlobAccessConditions{})
-	if err != nil {
-		if storageErr, ok := err.(azblob.StorageError); ok && storageErr.ServiceCode() == azblob.ServiceCodeBlobNotFound {
-			return core.ErrBlobNotFound
-		} else {
+	if _, err := blobUrl.Delete(ctx, azblob.DeleteSnapshotsOptionNone, azblob.BlobAccessConditions{}); err != nil {
+		if storageErr, ok := err.(azblob.StorageError); !ok || storageErr.ServiceCode() != azblob.ServiceCodeBlobNotFound {
 			return err
 		}
 	}
 
-	return err
+	return nil
 }
 
 func blobName(key core.BlobKey) string {

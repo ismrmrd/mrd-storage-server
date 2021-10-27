@@ -39,7 +39,7 @@ func main() {
 
 func loadConfig() ConfigSpec {
 	var config ConfigSpec
-	err := envconfig.Process("MRD_STORAGE_API", &config)
+	err := envconfig.Process("MRD_STORAGE_SERVER", &config)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

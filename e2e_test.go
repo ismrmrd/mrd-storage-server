@@ -499,6 +499,7 @@ func TestGarbageCollection(t *testing.T) {
 	for _, key := range keys {
 		err := blobStore.ReadBlob(context.Background(), io.Discard, key)
 		assert.ErrorIs(t, err, core.ErrBlobNotFound)
+		assert.Nil(t, blobStore.DeleteBlob(context.Background(), key))
 	}
 }
 

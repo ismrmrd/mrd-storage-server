@@ -94,7 +94,7 @@ for configuration in "${additionalConfigurations[@]}"; do
 
   IFS=',' read -r -a additionalConfigurations <<<"${configuration}"
   if [ ${#additionalConfigurations[@]} == 2 ]; then
-    TEST_DB_configuration=${additionalConfigurations[0]} TEST_STORAGE_configuration=${additionalConfigurations[1]} go test
+    TEST_DB_PROVIDER=${additionalConfigurations[0]} TEST_STORAGE_PROVIDER=${additionalConfigurations[1]} go test
   else
     TEST_REMOTE_URL=${additionalConfigurations[0]} go test
   fi
