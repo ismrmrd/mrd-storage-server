@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ismrmrd/mrd-storage-api/core"
+	"github.com/ismrmrd/mrd-storage-server/core"
 	log "github.com/sirupsen/logrus"
 )
 

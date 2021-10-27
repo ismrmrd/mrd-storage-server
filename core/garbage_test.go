@@ -7,8 +7,8 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/golang/mock/gomock"
-	"github.com/ismrmrd/mrd-storage-api/core"
-	"github.com/ismrmrd/mrd-storage-api/mocks"
+	"github.com/ismrmrd/mrd-storage-server/core"
+	"github.com/ismrmrd/mrd-storage-server/mocks"
 	"github.com/stretchr/testify/assert"
 )
 

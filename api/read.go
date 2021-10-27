@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/ismrmrd/mrd-storage-api/core"
+	"github.com/ismrmrd/mrd-storage-server/core"
 	log "github.com/sirupsen/logrus"
 	"github.com/xorcare/pointer"
 )

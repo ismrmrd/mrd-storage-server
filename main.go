@@ -10,10 +10,10 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/ismrmrd/mrd-storage-api/api"
-	"github.com/ismrmrd/mrd-storage-api/core"
-	"github.com/ismrmrd/mrd-storage-api/database"
-	"github.com/ismrmrd/mrd-storage-api/storage"
+	"github.com/ismrmrd/mrd-storage-server/api"
+	"github.com/ismrmrd/mrd-storage-server/core"
+	"github.com/ismrmrd/mrd-storage-server/database"
+	"github.com/ismrmrd/mrd-storage-server/storage"
 )
 
 const (

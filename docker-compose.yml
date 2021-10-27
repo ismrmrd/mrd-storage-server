@@ -23,31 +23,31 @@ services:
 
   mrd-sqlite-azurite:
     profiles: ["remote"]
-    image: ${MRD_STORAGE_API_IMAGE}
+    image: ${MRD_STORAGE_SERVER_IMAGE}
     ports:
       - 3334:3333
     environment:
-      - MRD_STORAGE_API_DATABASE_PROVIDER=sqlite
-      - MRD_STORAGE_API_DATABASE_CONNECTION_STRING=/metadata/metadata.db
-      - MRD_STORAGE_API_STORAGE_PROVIDER=azureblob
-      - MRD_STORAGE_API_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1
+      - MRD_STORAGE_SERVER_DATABASE_PROVIDER=sqlite
+      - MRD_STORAGE_SERVER_DATABASE_CONNECTION_STRING=/metadata/metadata.db
+      - MRD_STORAGE_SERVER_STORAGE_PROVIDER=azureblob
+      - MRD_STORAGE_SERVER_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1
     volumes:
       - type: volume
-        target: /metadata      
+        target: /metadata
     depends_on:
       azurite:
         condition: service_started
 
   mrd-postgres-filesystem:
     profiles: ["remote"]
-    image: ${MRD_STORAGE_API_IMAGE}
+    image: ${MRD_STORAGE_SERVER_IMAGE}
     ports:
       - 3335:3333
     environment:
-      - MRD_STORAGE_API_DATABASE_PROVIDER=postgresql
-      - MRD_STORAGE_API_DATABASE_CONNECTION_STRING=user=mrd password=mrd dbname=mrd host=postgres port=5432 sslmode=disable
-      - MRD_STORAGE_API_STORAGE_PROVIDER=filesystem
-      - MRD_STORAGE_API_STORAGE_CONNECTION_STRING=/data
+      - MRD_STORAGE_SERVER_DATABASE_PROVIDER=postgresql
+      - MRD_STORAGE_SERVER_DATABASE_CONNECTION_STRING=user=mrd password=mrd dbname=mrd host=postgres port=5432 sslmode=disable
+      - MRD_STORAGE_SERVER_STORAGE_PROVIDER=filesystem
+      - MRD_STORAGE_SERVER_STORAGE_CONNECTION_STRING=/data
     volumes:
       - type: volume
         target: /data
@@ -56,7 +56,7 @@ services:
         condition: service_healthy
 
   # A bit of a hack: this service service serves no purpose other forcing
-  # "docker compose up -d" to return only when the Postres is fully ready 
+  # "docker compose up -d" to return only when the Postres is fully ready
   # as defined by its health check, since this container will only start
   # when the DB is healthy.
   alpine:

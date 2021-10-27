@@ -1,6 +1,6 @@
 package core
 
-//go:generate mockgen -destination ../mocks/mocks_core.go -package=mocks github.com/ismrmrd/mrd-storage-api/core MetadataDatabase,BlobStore
+//go:generate mockgen -destination ../mocks/mocks_core.go -package=mocks github.com/ismrmrd/mrd-storage-server/core MetadataDatabase,BlobStore
 
 import (
 	"context"

@@ -1,4 +1,4 @@
-module github.com/ismrmrd/mrd-storage-api
+module github.com/ismrmrd/mrd-storage-server
 
 go 1.17
 

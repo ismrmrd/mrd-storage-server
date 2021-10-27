@@ -11,7 +11,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/ismrmrd/mrd-storage-api/core"
+	"github.com/ismrmrd/mrd-storage-server/core"
 )
 
 type fileSystemStore struct {

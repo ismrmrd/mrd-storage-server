@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/ismrmrd/mrd-storage-api/core"
+	"github.com/ismrmrd/mrd-storage-server/core"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"

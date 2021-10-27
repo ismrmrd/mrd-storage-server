@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/golang/mock/gomock"
-	"github.com/ismrmrd/mrd-storage-api/mocks"
+	"github.com/ismrmrd/mrd-storage-server/mocks"
 )
 
 func init() {

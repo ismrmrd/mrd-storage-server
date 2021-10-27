@@ -14,7 +14,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/gofrs/uuid"
-	"github.com/ismrmrd/mrd-storage-api/core"
+	"github.com/ismrmrd/mrd-storage-server/core"
 )
 
 // use a dedicated type to avoid context key collisions

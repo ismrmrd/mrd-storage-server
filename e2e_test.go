@@ -19,8 +19,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/gofrs/uuid"
-	"github.com/ismrmrd/mrd-storage-api/api"
-	"github.com/ismrmrd/mrd-storage-api/core"
+	"github.com/ismrmrd/mrd-storage-server/api"
+	"github.com/ismrmrd/mrd-storage-server/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

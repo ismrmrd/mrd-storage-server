@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
-	"github.com/ismrmrd/mrd-storage-api/core"
+	"github.com/ismrmrd/mrd-storage-server/core"
 )
 
 var (
@@ -48,7 +48,7 @@ func NewAzureBlobStore(connectionString string) (core.BlobStore, error) {
 
 	serviceUrl := azblob.NewServiceURL(*endpoint, pipeline)
 
-	containerUrl := serviceUrl.NewContainerURL("mrd-storage-api")
+	containerUrl := serviceUrl.NewContainerURL("mrd-storage-server")
 	_, err = containerUrl.Create(context.Background(), azblob.Metadata{}, azblob.PublicAccessNone)
 	if err != nil {
 		if storageErr, ok := err.(azblob.StorageError); !ok || storageErr.ServiceCode() != azblob.ServiceCodeContainerAlreadyExists {

@@ -1,6 +1,6 @@
-# MRD Storage API
+# MRD Storage Server
 
-This repo contains a RESTful api for storing and retrieving data during MRI image reconstructions. It supports storing and arbitrary blobs with a set of metadata tags and searching them using these tags.
+This repo contains a server with a RESTful API for storing and retrieving data during MRI image reconstructions. It supports storing and arbitrary blobs with a set of metadata tags and searching them using these tags.
 
 The tags are:
 
@@ -12,7 +12,7 @@ The tags are:
 | `name`             | `mrd-tag-name`         | `name`            |                                                                                                                             |
 | `[custom-tag]`     | `mrd-tag-[custom-tag]` | `[custom-tag]`    | Custom tag names cannot collide with existing tags in this table. Unlike system tags, custom tags can have multiple values. |
 | `content-type`     | `Content-Type`         | `N/A`             | Using standard HTTP header.                                                                                                 |
-| `uri`              | `Location`             | `N/A`             | System-assigned and globally unique. `[base]/v1/blob/{{id}}`                                                                   |
+| `uri`              | `Location`             | `N/A`             | System-assigned and globally unique. `[base]/v1/blob/{{id}}`                                                                |
 | `last-modified`    | `Last-Modified`        | `N/A`             | Using standard HTTP header, even though blobs are immutable.                                                                |
 
 Tag names are case-insensitive, but their values are case-sensitive.

@@ -55,7 +55,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ -n "${down:-}" ]; then
-  MRD_STORAGE_API_IMAGE="unused" docker compose down --remove-orphans
+  MRD_STORAGE_SERVER_IMAGE="unused" docker compose down --remove-orphans
   exit
 fi
 
@@ -66,16 +66,16 @@ fi
 if [ -n "${inProc:-}" ]; then
   echo "******* Running unit tests *******"
   # shellcheck disable=SC2046
-  go test $(go list ./... | grep -v github.com/ismrmrd/mrd-storage-api$) | grep -v "\\[[no test files\\]"
+  go test $(go list ./... | grep -v github.com/ismrmrd/mrd-storage-server$) | grep -v "\\[[no test files\\]"
 fi
 
 echo
 echo "******* Setting up environment for E2E tests *******"
 if [ -n "${remote:-}" ]; then
   image=$(ko publish --local -t latest --base-import-paths .)
-  MRD_STORAGE_API_IMAGE=${image} docker compose --profile remote up -d
+  MRD_STORAGE_SERVER_IMAGE=${image} docker compose --profile remote up -d
 else
-  MRD_STORAGE_API_IMAGE="unused" docker compose --profile inproc up -d
+  MRD_STORAGE_SERVER_IMAGE="unused" docker compose --profile inproc up -d
 fi
 
 additionalConfigurations=()
