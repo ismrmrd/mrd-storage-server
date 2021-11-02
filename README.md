@@ -20,7 +20,7 @@ The tags are:
 | `name`             | `mrd-tag-name`         | `name`            | The name of the blob.                                                                                                       |
 | `[custom-tag]`     | `mrd-tag-[custom-tag]` | `[custom-tag]`    | Custom tag names cannot collide with existing tags in this table. Unlike system tags, custom tags can have multiple values. |
 | `content-type`     | `Content-Type`         | `N/A`             | The blob MIME type. Using the standard HTTP header.                                                                         |
-| `uri`              | `Location`             | `N/A`             | A URI for reading the blob. System-assigned and globally unique. `[base]/v1/blob/{{id}}`                                    |
+| `uri`              | `Location`             | `N/A`             | A URI for reading the blob. System-assigned and globally unique. `[base]/v1/blobs/{{id}}`                                    |
 | `last-modified`    | `Last-Modified`        | `N/A`             | The blob's creation timestamp. Using the standard HTTP header, even though blobs are immutable.                             |
 
 Tag names are case-insensitive, but their values are case-sensitive.
@@ -32,7 +32,7 @@ Tag names are case-insensitive, but their values are case-sensitive.
 Tag values are specified as query string parameters of a `POST` request:
 
 ```
-POST http://localhost:3333/v1/blob?subject=123&session=mysession&name=NoiseCovariance
+POST http://localhost:3333/v1/blobs?subject=123&session=mysession&name=NoiseCovariance
 Content-Type: text/plain
 
 This is my content
@@ -41,7 +41,7 @@ This is my content
 Response:
 ```
 HTTP/1.1 201 Created
-Location: http://localhost:3333/v1/blob/49faf89d-9e4d-4ff5-9b2c-d1db39bcdb2b-123
+Location: http://localhost:3333/v1/blobs/49faf89d-9e4d-4ff5-9b2c-d1db39bcdb2b-123
 Date: Wed, 20 Oct 2021 15:07:17 GMT
 Content-Length: 0
 Connection: close
@@ -51,7 +51,7 @@ Connection: close
 
 The `Location` header of the `POST` response contains a link the `GET` the blob:
 ```
-GET http://localhost:3333/v1/blob/49faf89d-9e4d-4ff5-9b2c-d1db39bcdb2b-123
+GET http://localhost:3333/v1/blobs/49faf89d-9e4d-4ff5-9b2c-d1db39bcdb2b-123
 ```
 
 Response:
@@ -76,7 +76,7 @@ Note that the tag values are added as HTTP headers with the prefix `Mrd-Tag-`.
 You can search for blobs based on tags using the same syntax that is used for creating blobs:
 
 ```
-GET http://localhost:3333/v1/blob?subject=123&session=mysession&name=NoiseCovariance
+GET http://localhost:3333/v1/blobs?subject=123&session=mysession&name=NoiseCovariance
 ```
 
 Response:
@@ -92,7 +92,7 @@ Connection: close
     {
       "contentType": "text/plain",
       "lastModified": "2021-10-20T15:07:17.224Z",
-      "location": "http://localhost:3333/v1/blob/49faf89d-9e4d-4ff5-9b2c-d1db39bcdb2b-123",
+      "location": "http://localhost:3333/v1/blobs/49faf89d-9e4d-4ff5-9b2c-d1db39bcdb2b-123",
       "name": "NoiseCovariance",
       "session": "mysession",
       "subject": "123"
@@ -115,30 +115,30 @@ Connection: close
     {
       "contentType": "text/plain",
       "lastModified": "2021-10-20T15:07:17.224Z",
-      "location": "http://localhost:3333/v1/blob/49faf89d-9e4d-4ff5-9b2c-d1db39bcdb2b-123",
+      "location": "http://localhost:3333/v1/blobs/49faf89d-9e4d-4ff5-9b2c-d1db39bcdb2b-123",
       "name": "NoiseCovariance",
       "session": "mysession",
       "subject": "123"
     }
   ],
-  "nextLink": "http://localhost:3333/v1/blob?_ct=eyJ0cyI6MTYzNDc0MjQzNzIyNH0&_limit=1&name=NoiseCovariance&session=mysession&subject=123"
+  "nextLink": "http://localhost:3333/v1/blobs?_ct=eyJ0cyI6MTYzNDc0MjQzNzIyNH0&_limit=1&name=NoiseCovariance&session=mysession&subject=123"
 }
 ```
 
 It is also possible to only get results that were created at or before a specific time with the `_at` parameter. The `_at` parameter is specified as a [time zone offset string](https://developer.mozilla.org/en-US/docs/Web/HTML/Date_and_time_formats#time_zone_offset_string). For example:
 
 ```
-GET http://localhost:3333/v1/blob?subject=123&session=mysession&name=NoiseCovariance&_at=2021-10-19T15:07:17.224Z
+GET http://localhost:3333/v1/blobs?subject=123&session=mysession&name=NoiseCovariance&_at=2021-10-19T15:07:17.224Z
 ```
 
 This will exclude results that were created after the given time.
 
 ### Getting the Latest Blob Matching a Query
 
-There is a shortcut to get the latest blob matching a search query in one request at the `/v1/blob/latest` endpoint:
+There is a shortcut to get the latest blob matching a search query in one request at the `/v1/blobs/latest` endpoint:
 
 ```
-GET http://localhost:3333/v1/blob/latest?subject=123&session=mysession&name=NoiseCovariance
+GET http://localhost:3333/v1/blobs/latest?subject=123&session=mysession&name=NoiseCovariance
 ```
 
 Response:
@@ -146,7 +146,7 @@ Response:
 HTTP/1.1 200 OK
 Content-Type: text/plain
 Last-Modified: Wed, 20 Oct 2021 15:07:17 GMT
-Location: http://localhost:3333/v1/blob/49faf89d-9e4d-4ff5-9b2c-d1db39bcdb2b-123
+Location: http://localhost:3333/v1/blobs/49faf89d-9e4d-4ff5-9b2c-d1db39bcdb2b-123
 Mrd-Tag-Name: NoiseCovariance
 Mrd-Tag-Session: mysession
 Mrd-Tag-Subject: 123
@@ -160,7 +160,7 @@ This is my content
 The `_at` parameter can be used here as well to request the latest blob that was created no later than a given time.
 
 ```
-GET http://localhost:3333/v1/blob/latest?subject=123&session=mysession&name=NoiseCovariance&_at=2021-10-19T15:07:17.224Z
+GET http://localhost:3333/v1/blobs/latest?subject=123&session=mysession&name=NoiseCovariance&_at=2021-10-19T15:07:17.224Z
 ```
 
 ### Custom tags
@@ -168,12 +168,12 @@ GET http://localhost:3333/v1/blob/latest?subject=123&session=mysession&name=Nois
 Custom tags can be provded for blobs. Unlike system tags, custom tags can have many values:
 
 ```
-POST http://localhost:3333/v1/blob?subject=someone&customTag1=a&customTag1=b
+POST http://localhost:3333/v1/blobs?subject=someone&customTag1=a&customTag1=b
 ```
 
 ```
 HTTP/1.1 201 Created
-Location: http://localhost:3333/v1/blob/9e5c32e1-4b76-4098-bf72-48602efc274f-someone
+Location: http://localhost:3333/v1/blobs/9e5c32e1-4b76-4098-bf72-48602efc274f-someone
 Date: Thu, 21 Oct 2021 21:01:53 GMT
 Content-Length: 0
 Connection: close
@@ -182,7 +182,7 @@ Connection: close
 When a custom tag has multiple values, searches match any of the values:
 
 ```
-GET http://localhost:3333/v1/blob?subject=someone&customTag1=a
+GET http://localhost:3333/v1/blobs?subject=someone&customTag1=a
 ```
 
 ```
@@ -200,7 +200,7 @@ Connection: close
         "b"
       ],
       "lastModified": "2021-10-21T21:01:53.666Z",
-      "location": "http://localhost:3333/v1/blob/9e5c32e1-4b76-4098-bf72-48602efc274f-someone",
+      "location": "http://localhost:3333/v1/blobs/9e5c32e1-4b76-4098-bf72-48602efc274f-someone",
       "subject": "someone"
     }
   ]
@@ -210,7 +210,7 @@ Connection: close
 However, when specifying multiple criteria on a tag, they must all match (they are ANDed togther, not ORed):
 
 ```
-GET http://localhost:3333/v1/blob?subject=someone&customTag1=a&customTag1=missing
+GET http://localhost:3333/v1/blobs?subject=someone&customTag1=a&customTag1=missing
 ```
 
 ```
@@ -226,7 +226,7 @@ Connection: close
 ```
 
 ```
-GET http://localhost:3333/v1/blob?subject=someone&customTag1=a&customTag1=b
+GET http://localhost:3333/v1/blobs?subject=someone&customTag1=a&customTag1=b
 ```
 
 ```
@@ -244,7 +244,7 @@ Connection: close
         "b"
       ],
       "lastModified": "2021-10-21T21:01:53.666Z",
-      "location": "http://localhost:3333/v1/blob/9e5c32e1-4b76-4098-bf72-48602efc274f-someone",
+      "location": "http://localhost:3333/v1/blobs/9e5c32e1-4b76-4098-bf72-48602efc274f-someone",
       "subject": "someone"
     }
   ]

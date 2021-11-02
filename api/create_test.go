@@ -38,7 +38,7 @@ func TestStorageWriteFailureRevertsStagedMetadata(t *testing.T) {
 
 	handler := Handler{db: mockMetadataDatabase, store: mockBlobStore}
 
-	req := httptest.NewRequest("POST", "/v1/blob?subject=a", strings.NewReader("content"))
+	req := httptest.NewRequest("POST", "/v1/blobs?subject=a", strings.NewReader("content"))
 	resp := httptest.NewRecorder()
 
 	handler.CreateBlob(resp, req)
@@ -57,7 +57,7 @@ func TestStagingFailureResultsInAbortedRequest(t *testing.T) {
 
 	handler := Handler{db: mockMetadataDatabase, store: mockBlobStore}
 
-	req := httptest.NewRequest("POST", "/v1/blob?subject=a", strings.NewReader("content"))
+	req := httptest.NewRequest("POST", "/v1/blobs?subject=a", strings.NewReader("content"))
 	resp := httptest.NewRecorder()
 
 	handler.CreateBlob(resp, req)

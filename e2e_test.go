@@ -197,7 +197,7 @@ func TestSearchPaging(t *testing.T) {
 
 		t.Run(fmt.Sprintf("page size %d", pageSize), func(t *testing.T) {
 
-			link := fmt.Sprintf("/v1/blob?subject=%s&mytag=t&_limit=%d", subject, pageSize)
+			link := fmt.Sprintf("/v1/blobs?subject=%s&mytag=t&_limit=%d", subject, pageSize)
 
 			items := make(map[string]bool)
 			for link != "" {
@@ -290,8 +290,8 @@ func TestUnicodeTags(t *testing.T) {
 func Test404(t *testing.T) {
 	cases := []string{
 		"/",
-		fmt.Sprintf("/v1/blob/latest?subject=%d", time.Now().UnixNano()),
-		"/v1/blob/abc",
+		fmt.Sprintf("/v1/blobs/latest?subject=%d", time.Now().UnixNano()),
+		"/v1/blobs/abc",
 	}
 
 	for _, c := range cases {
@@ -316,7 +316,7 @@ func TestNullSubject(t *testing.T) {
 }
 
 func search(t *testing.T, queryString string) SearchResponse {
-	resp, err := executeRequest("GET", fmt.Sprintf("/v1/blob?%s", queryString), nil, nil)
+	resp, err := executeRequest("GET", fmt.Sprintf("/v1/blobs?%s", queryString), nil, nil)
 	require.Nil(t, err)
 
 	searchResponse := SearchResponse{}
@@ -345,7 +345,7 @@ func create(t *testing.T, queryString, contentType, content string) CreateRespon
 		headers.Set("Content-Type", contentType)
 	}
 
-	resp, err := executeRequest("POST", fmt.Sprintf("/v1/blob?%s", queryString), headers, strings.NewReader(content))
+	resp, err := executeRequest("POST", fmt.Sprintf("/v1/blobs?%s", queryString), headers, strings.NewReader(content))
 	require.Nil(t, err)
 
 	createResponse := CreateResponse{}
@@ -370,7 +370,7 @@ func read(t *testing.T, url string) ReadResponse {
 }
 
 func getLatestBlob(t *testing.T, queryString string) GetLatestResponse {
-	resp, err := executeRequest("GET", fmt.Sprintf("/v1/blob/latest?%s", queryString), nil, nil)
+	resp, err := executeRequest("GET", fmt.Sprintf("/v1/blobs/latest?%s", queryString), nil, nil)
 	require.Nil(t, err)
 	return GetLatestResponse{
 		ReadResponse: populateBlobResponse(t, resp),
