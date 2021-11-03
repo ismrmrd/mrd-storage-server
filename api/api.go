@@ -39,7 +39,7 @@ func BuildRouter(db core.MetadataDatabase, store core.BlobStore, logRequests boo
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Use(createApiVersionMiddleware("v1"))
-		r.Route("/blob", func(r chi.Router) {
+		r.Route("/blobs", func(r chi.Router) {
 			r.Post("/", handler.CreateBlob)
 			r.Get("/{combined-id}", handler.ReadBlob)
 			r.Get("/", handler.SearchBlobs)
@@ -133,7 +133,7 @@ func getBaseUri(r *http.Request) url.URL {
 func getBlobUri(r *http.Request, key core.BlobKey) string {
 
 	uri := getBaseUri(r)
-	uri.Path = path.Join(uri.Path, "blob", getBlobCombinedId(key))
+	uri.Path = path.Join(uri.Path, "blobs", getBlobCombinedId(key))
 
 	return uri.String()
 }
