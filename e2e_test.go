@@ -228,8 +228,10 @@ func TestSearchPaging(t *testing.T) {
 		previousResult := fullResults.Results.Items[i-1]
 		thisResult := fullResults.Results.Items[i]
 		if prevTime, thisTime := previousResult["lastModified"].(string), thisResult["lastModified"].(string); prevTime != thisTime {
-			atQuery := fmt.Sprintf("%s&_at=%s", originalQuery, thisTime)
+			atQuery := fmt.Sprintf("%s&_at=%s", originalQuery, gourl.QueryEscape(thisTime))
 			atRes := search(t, atQuery)
+
+			require.Equal(t, http.StatusOK, atRes.StatusCode)
 			assert.Equal(t, thisResult["location"].(string), atRes.Results.Items[0]["location"].(string))
 
 			latestResponse := getLatestBlob(t, atQuery)
