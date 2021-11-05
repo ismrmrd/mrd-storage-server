@@ -552,7 +552,7 @@ func TestGarbageCollection(t *testing.T) {
 	}
 
 	for _, key := range keys {
-		err := db.StageBlobMetadata(context.Background(), key, &core.BlobTags{})
+		_, err := db.StageBlobMetadata(context.Background(), key, &core.BlobTags{})
 		require.Nil(t, err)
 		blobStore.SaveBlob(context.Background(), http.NoBody, key)
 	}
@@ -580,7 +580,7 @@ func TestStagedBlobsAreNotVisible(t *testing.T) {
 	key := createKey(t, subject)
 	tags := core.BlobTags{CustomTags: make(map[string][]string)}
 
-	err := db.StageBlobMetadata(context.Background(), key, &tags)
+	_, err := db.StageBlobMetadata(context.Background(), key, &tags)
 	require.Nil(t, err)
 	err = blobStore.SaveBlob(context.Background(), http.NoBody, key)
 	require.Nil(t, err)

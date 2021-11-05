@@ -70,7 +70,8 @@ func (handler *Handler) CreateBlob(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := handler.db.StageBlobMetadata(r.Context(), key, &tags); err != nil {
+	blobInfo, err := handler.db.StageBlobMetadata(r.Context(), key, &tags)
+	if err != nil {
 		log.Errorf("Failed to stage blob metadata: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -93,16 +94,8 @@ func (handler *Handler) CreateBlob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	blob, err := handler.db.GetBlobMetadata(r.Context(), key)
-
-	if err != nil {
-		log.Panicf("Recently added blob not found in database.")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
 	w.WriteHeader(http.StatusCreated)
-	writeJson(w, r, CreateBlobInfo(r, blob))
+	writeJson(w, r, CreateBlobInfo(r, blobInfo))
 }
 
 func ValidateTagName(tagName string, tagValues []string) error {
