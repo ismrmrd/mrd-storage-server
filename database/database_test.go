@@ -66,7 +66,7 @@ func TestStagedBlobMetadataCleanedUpOnRevert(t *testing.T) {
 	require.Nil(t, err)
 	blobInfo, err := db.GetBlobMetadata(context.Background(), key)
 	require.Nil(t, err)
-	assert.Empty(t, blobInfo.Tags.CustomTags, "Residual custom tags present from previous RevertStagedBlobMetadata call")
+	assert.Empty(t, blobInfo.Tags.CustomTags, "Residual custom tags remain after RevertStagedBlobMetadata call")
 }
 
 func TestSchemaNotDowngraded(t *testing.T) {
