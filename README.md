@@ -46,7 +46,15 @@ Date: Fri, 05 Nov 2021 10:51:54 GMT
 Content-Length: 310
 Content-Type: text/plain; charset=utf-8
 
-{"contentType":"text/plain","data":"http://localhost:3333/v1/blobs/c8a3aa43-04c0-4acb-9154-ce7b281ec274-123/data","lastModified":"2021-11-05T11:51:54.036+01:00","location":"http://localhost:3333/v1/blobs/c8a3aa43-04c0-4acb-9154-ce7b281ec274-123","name":"NoiseCovariance","session":"mysession","subject":"123"}
+{
+   "contentType":"text/plain",
+   "data":"http://localhost:3333/v1/blobs/c8a3aa43-04c0-4acb-9154-ce7b281ec274-123/data",
+   "lastModified":"2021-11-05T11:51:54.036+01:00",
+   "location":"http://localhost:3333/v1/blobs/c8a3aa43-04c0-4acb-9154-ce7b281ec274-123",
+   "name":"NoiseCovariance",
+   "session":"mysession",
+   "subject":"123"
+}
 ```
 
 ### Reading a Blob
