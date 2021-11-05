@@ -11,7 +11,7 @@ import (
 )
 
 
-func (handler *Handler) GetBlob(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) GetBlobMetadata(w http.ResponseWriter, r *http.Request) {
 	blobInfo, err := handler.BlobInfo(w, r)
 	if err != nil {
 		return
