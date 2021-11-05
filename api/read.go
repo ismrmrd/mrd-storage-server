@@ -10,27 +10,45 @@ import (
 	"github.com/xorcare/pointer"
 )
 
-func (handler *Handler) ReadBlob(w http.ResponseWriter, r *http.Request) {
+
+func (handler *Handler) GetBlob(w http.ResponseWriter, r *http.Request) {
+	blobInfo, err := handler.BlobInfo(w, r)
+	if err != nil {
+		return
+	}
+	writeJson(w, r, CreateBlobInfo(r, blobInfo))
+}
+
+func (handler *Handler) GetBlobData(w http.ResponseWriter, r *http.Request) {
+	blobInfo, err := handler.BlobInfo(w, r)
+	if err != nil {
+		return
+	}
+	handler.BlobResponse(w, r, blobInfo)
+}
+
+func (handler *Handler) BlobInfo(w http.ResponseWriter, r *http.Request) (*core.BlobInfo, error) {
+
 	combinedId := chi.URLParam(r, "combined-id")
 	key, ok := getBlobSubjectAndIdFromCombinedId(combinedId)
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
-		return
+		return nil, errors.New("invalid combined id")
 	}
 
 	blobInfo, err := handler.db.GetBlobMetadata(r.Context(), key)
 	if err != nil {
 		if errors.Is(err, core.ErrRecordNotFound) {
 			w.WriteHeader(http.StatusNotFound)
-			return
+			return nil, err
 		}
 
 		log.Errorf("Database read failed: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
-	handler.BlobResponse(w, r, blobInfo)
+	return blobInfo, nil
 }
 
 func (handler *Handler) BlobResponse(w http.ResponseWriter, r *http.Request, blobInfo *core.BlobInfo) {

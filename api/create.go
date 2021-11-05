@@ -3,12 +3,11 @@ package api
 import (
 	"errors"
 	"fmt"
-	"net/http"
-	"regexp"
-
 	"github.com/gofrs/uuid"
 	"github.com/ismrmrd/mrd-storage-server/core"
 	log "github.com/sirupsen/logrus"
+	"net/http"
+	"regexp"
 )
 
 const (
@@ -94,8 +93,16 @@ func (handler *Handler) CreateBlob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Add("Location", getBlobUri(r, key))
+	blob, err := handler.db.GetBlobMetadata(r.Context(), key)
+
+	if err != nil {
+		log.Panicf("Recently added blob not found in database.")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(http.StatusCreated)
+	writeJson(w, r, CreateBlobInfo(r, blob))
 }
 
 func ValidateTagName(tagName string, tagValues []string) error {

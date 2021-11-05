@@ -35,33 +35,7 @@ func (handler *Handler) SearchBlobs(w http.ResponseWriter, r *http.Request) {
 	responseEntries := make([]map[string]interface{}, len(results))
 
 	for i, res := range results {
-		entry := make(map[string]interface{})
-		entry["lastModified"] = res.CreatedAt.Format(time.RFC3339Nano)
-
-		entry["subject"] = res.Key.Subject
-		if res.Tags.ContentType != nil {
-			entry["contentType"] = res.Tags.ContentType
-		}
-		if res.Tags.Device != nil {
-			entry["device"] = res.Tags.Device
-		}
-		if res.Tags.Name != nil {
-			entry["name"] = res.Tags.Name
-		}
-		if res.Tags.Session != nil {
-			entry["session"] = res.Tags.Session
-		}
-		entry["location"] = getBlobUri(r, res.Key)
-
-		for k, v := range res.Tags.CustomTags {
-			if len(v) == 1 {
-				entry[k] = v[0]
-			} else {
-				entry[k] = v
-			}
-		}
-
-		responseEntries[i] = entry
+		responseEntries[i] = CreateBlobInfo(r, &res)
 	}
 
 	searchResponse := SearchResponse{Items: responseEntries}
@@ -79,7 +53,7 @@ func (handler *Handler) SearchBlobs(w http.ResponseWriter, r *http.Request) {
 	writeJson(w, r, searchResponse)
 }
 
-func (handler *Handler) GetLatestBlob(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) GetLatestBlobData(w http.ResponseWriter, r *http.Request) {
 
 	query, at, _, _, ok := getSearchParameters(w, r)
 	if !ok {

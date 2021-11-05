@@ -123,9 +123,8 @@ func TestCreateValidBlob(t *testing.T) {
 	require.Equal(t, http.StatusCreated, createResp.StatusCode)
 
 	// now read the blob using the Location header in the response
-	location := createResp.Location
 
-	readResp := read(t, location)
+	readResp := read(t, createResp.Data)
 	assert.Equal(t, http.StatusOK, readResp.StatusCode)
 	assert.Equal(t, bodyContents, readResp.Body)
 	assert.Equal(t, "application/octet-stream", *readResp.Tags.ContentType)
@@ -154,10 +153,7 @@ func TestCreateValidBlobCustomTags(t *testing.T) {
 		bodyContents)
 	require.Equal(t, http.StatusCreated, createResp.StatusCode)
 
-	// now read the blob using the Location header in the response
-	location := createResp.Location
-
-	readResp := read(t, location)
+	readResp := read(t, createResp.Data)
 	assert.Equal(t, http.StatusOK, readResp.StatusCode)
 	assert.Equal(t, bodyContents, readResp.Body)
 
@@ -180,6 +176,61 @@ func TestCreateValidBlobCustomTags(t *testing.T) {
 	searchResp = search(t, fmt.Sprintf("subject=%s&CustomTag2=customTag2Value1&CustomTag2=customTag2Value2", subject))
 	assert.Equal(t, http.StatusOK, searchResp.StatusCode)
 	assert.Len(t, searchResp.Results.Items, 1)
+}
+
+func TestCreateResponse(t *testing.T) {
+
+	body := "these are some bytes"
+	subject := "$null"
+
+	response := create(t, fmt.Sprintf("subject=%s&session=mysession", subject), "text/plain", body)
+	require.Equal(t, http.StatusCreated, response.StatusCode)
+
+	assert.NotNil(t, response.Meta["lastModified"])
+	assert.Equal(t, "text/plain", response.Meta["contentType"])
+
+	assert.Equal(t, "mysession", response.Meta["session"])
+	assert.Equal(t, "$null", response.Meta["subject"])
+	assert.Nil(t, response.Meta["name"])
+
+	assert.NotNil(t, response.Meta["location"])
+	assert.NotNil(t, response.Meta["data"])
+}
+
+func TestCreateResponseCustomTags(t *testing.T) {
+
+	body := "these are some bytes"
+	subject := fmt.Sprint(time.Now().UnixNano())
+
+	// Create the blob
+	response := create(
+		t,
+		fmt.Sprintf("subject=%s&session=mysession&customtag1=customTag1Value&customTag2=customTag2Value1&customTag2=customTag2Value2", subject),
+		"text/plain",
+		body)
+	require.Equal(t, http.StatusCreated, response.StatusCode)
+
+	require.Equal(t, "customTag1Value", response.Meta["customtag1"])
+	require.ElementsMatch(t, []string{"customTag2Value1", "customTag2Value2"}, response.Meta["customtag2"])
+}
+
+func TestCreateResponseMatchesBlobMeta(t *testing.T) {
+
+	body := "these are some bytes"
+	subject := "$null"
+
+	createResponse := create(t, fmt.Sprintf("subject=%s&session=mysession", subject), "text/plain", body)
+	require.Equal(t, http.StatusCreated, createResponse.StatusCode)
+
+	location, err := gourl.Parse(createResponse.Location)
+	require.Nil(t, err)
+
+	resp, err := executeRequest("GET", location.Path, nil, nil)
+	require.Nil(t, err)
+
+	readResponse := createMetaResponse(resp)
+	require.Equal(t, http.StatusOK, readResponse.StatusCode)
+	require.True(t, reflect.DeepEqual(createResponse.Meta, readResponse.Meta))
 }
 
 func TestSearchPaging(t *testing.T) {
@@ -277,14 +328,16 @@ func TestTagCaseSensitivity(t *testing.T) {
 func TestUnicodeTags(t *testing.T) {
 	subject := fmt.Sprintf("S-%d", time.Now().UnixNano())
 	query := fmt.Sprintf("subject=%s&name=😁&mytag=😀", subject)
+
 	createResp := create(t, query, "", "")
 	require.Equal(t, http.StatusCreated, createResp.StatusCode)
+
 	items := search(t, query).Results.Items
 	require.NotEmpty(t, items)
 	assert.Equal(t, "😁", items[0]["name"].(string))
 	assert.Equal(t, "😀", items[0]["mytag"].(string))
 
-	readResponse := read(t, createResp.Location)
+	readResponse := read(t, createResp.Data)
 	assert.Equal(t, "😁", *readResponse.Tags.Name)
 	assert.Equal(t, "😀", readResponse.Tags.CustomTags["Mytag"][0])
 }
@@ -310,7 +363,7 @@ func TestNullSubject(t *testing.T) {
 	device := fmt.Sprint(time.Now().UnixNano())
 	query := "subject=$null&device=" + device
 	createResp := create(t, query, "", "hello")
-	readResp := read(t, createResp.Location)
+	readResp := read(t, createResp.Data)
 	assert.Equal(t, "hello", readResp.Body)
 
 	latestResp := getLatestBlob(t, query)
@@ -340,29 +393,17 @@ func search(t *testing.T, queryString string) SearchResponse {
 	return searchResponse
 }
 
-func create(t *testing.T, queryString, contentType, content string) CreateResponse {
+func create(t *testing.T, queryString, contentType, content string) MetaResponse {
 	var headers http.Header = nil
 	if contentType != "" {
 		headers = http.Header{}
 		headers.Set("Content-Type", contentType)
 	}
 
-	resp, err := executeRequest("POST", fmt.Sprintf("/v1/blobs?%s", queryString), headers, strings.NewReader(content))
+	resp, err := executeRequest("POST", fmt.Sprintf("/v1/blobs/data?%s", queryString), headers, strings.NewReader(content))
 	require.Nil(t, err)
 
-	createResponse := CreateResponse{}
-	createResponse.RawResponse = resp
-	createResponse.StatusCode = resp.StatusCode
-
-	body, _ := ioutil.ReadAll(resp.Body)
-	errorResponse := api.ErrorResponse{}
-	if json.Unmarshal(body, &errorResponse) == nil {
-		createResponse.ErrorResponse = &errorResponse
-	}
-
-	createResponse.Location = resp.Header.Get("Location")
-
-	return createResponse
+	return createMetaResponse(resp)
 }
 
 func read(t *testing.T, url string) ReadResponse {
@@ -371,8 +412,31 @@ func read(t *testing.T, url string) ReadResponse {
 	return populateBlobResponse(t, resp)
 }
 
+func createMetaResponse(resp *http.Response) MetaResponse {
+	response := MetaResponse{}
+	response.RawResponse = resp
+	response.StatusCode = resp.StatusCode
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	errorResponse := api.ErrorResponse{}
+	if json.Unmarshal(body, &errorResponse) == nil {
+		response.ErrorResponse = &errorResponse
+	}
+
+	goodStatusCodes := map[int]bool{http.StatusCreated: true, http.StatusOK: true}
+
+	created := make(map[string]interface{})
+	if json.Unmarshal(body, &created) == nil && goodStatusCodes[resp.StatusCode] {
+		response.Meta = created
+		response.Location = created["location"].(string)
+		response.Data = created["data"].(string)
+	}
+
+	return response
+}
+
 func getLatestBlob(t *testing.T, queryString string) GetLatestResponse {
-	resp, err := executeRequest("GET", fmt.Sprintf("/v1/blobs/latest?%s", queryString), nil, nil)
+	resp, err := executeRequest("GET", fmt.Sprintf("/v1/blobs/data/latest?%s", queryString), nil, nil)
 	require.Nil(t, err)
 	return GetLatestResponse{
 		ReadResponse: populateBlobResponse(t, resp),
@@ -554,9 +618,11 @@ type SearchResponse struct {
 	Results *api.SearchResponse
 }
 
-type CreateResponse struct {
+type MetaResponse struct {
 	Response
 	Location string
+	Data string
+	Meta map[string]interface{}
 }
 
 type ReadResponse struct {
