@@ -36,7 +36,7 @@ func (handler *Handler) SearchBlobs(w http.ResponseWriter, r *http.Request) {
 
 	for i, res := range results {
 		entry := make(map[string]interface{})
-		entry["lastModified"] = res.CreatedAt.Format(time.RFC3339Nano)
+		entry["lastModified"] = res.CreatedAt.UTC().Format(time.RFC3339Nano)
 
 		entry["subject"] = res.Key.Subject
 		if res.Tags.ContentType != nil {
