@@ -10,37 +10,45 @@ import (
 	"github.com/xorcare/pointer"
 )
 
-func (handler *Handler) ReadBlob(w http.ResponseWriter, r *http.Request) {
-	combinedId := chi.URLParam(r, "combined-id")
-	key, ok := getBlobSubjectAndIdFromCombinedId(combinedId)
-	if !ok {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
+type Responder func(http.ResponseWriter, *http.Request, *core.BlobInfo)
 
-	blobInfo, err := handler.db.GetBlobMetadata(r.Context(), key)
-	if err != nil {
-		if errors.Is(err, core.ErrRecordNotFound) {
+func (handler *Handler) MakeBlobEndpoint(responder Responder) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		combinedId := chi.URLParam(r, "combined-id")
+		key, ok := getBlobSubjectAndIdFromCombinedId(combinedId)
+		if !ok {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		log.Errorf("Database read failed: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+		blobInfo, err := handler.db.GetBlobMetadata(r.Context(), key)
+		if err != nil {
+			if errors.Is(err, core.ErrRecordNotFound) {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
 
-	handler.BlobResponse(w, r, blobInfo)
+			log.Errorf("Database read failed: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		responder(w, r, blobInfo)
+	}
 }
 
-func (handler *Handler) BlobResponse(w http.ResponseWriter, r *http.Request, blobInfo *core.BlobInfo) {
+func (handler *Handler) BlobMetadataResponse(w http.ResponseWriter, r *http.Request, blobInfo *core.BlobInfo) {
+	writeJson(w, r, CreateBlobInfo(r, blobInfo))
+}
+
+func (handler *Handler) BlobDataResponse(w http.ResponseWriter, r *http.Request, blobInfo *core.BlobInfo) {
 
 	writeTagsAsHeaders(w, blobInfo)
 
 	if err := handler.store.ReadBlob(r.Context(), w, blobInfo.Key); err != nil {
 		log.Errorf("Failed to read blob from storage: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		return
 	}
 }
 

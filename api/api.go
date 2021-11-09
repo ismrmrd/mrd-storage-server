@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -40,10 +41,11 @@ func BuildRouter(db core.MetadataDatabase, store core.BlobStore, logRequests boo
 	r.Route("/v1", func(r chi.Router) {
 		r.Use(createApiVersionMiddleware("v1"))
 		r.Route("/blobs", func(r chi.Router) {
-			r.Post("/", handler.CreateBlob)
-			r.Get("/{combined-id}", handler.ReadBlob)
+			r.Post("/data", handler.CreateBlob)
 			r.Get("/", handler.SearchBlobs)
-			r.Get("/latest", handler.GetLatestBlob)
+			r.Get("/data/latest", handler.GetLatestBlobData)
+			r.Get("/{combined-id}", handler.MakeBlobEndpoint(handler.BlobMetadataResponse))
+			r.Get("/{combined-id}/data", handler.MakeBlobEndpoint(handler.BlobDataResponse))
 		})
 	})
 
@@ -136,6 +138,46 @@ func getBlobUri(r *http.Request, key core.BlobKey) string {
 	uri.Path = path.Join(uri.Path, "blobs", getBlobCombinedId(key))
 
 	return uri.String()
+}
+
+func getDataUri(r *http.Request, key core.BlobKey) string {
+
+	uri := getBaseUri(r)
+	uri.Path = path.Join(uri.Path, "blobs", getBlobCombinedId(key), "data")
+
+	return uri.String()
+}
+
+func CreateBlobInfo(r *http.Request, blob *core.BlobInfo) map[string]interface{} {
+
+	info := make(map[string]interface{})
+	info["lastModified"] = blob.CreatedAt.UTC().Format(time.RFC3339Nano)
+
+	info["subject"] = blob.Key.Subject
+	if blob.Tags.ContentType != nil {
+		info["contentType"] = blob.Tags.ContentType
+	}
+	if blob.Tags.Device != nil {
+		info["device"] = blob.Tags.Device
+	}
+	if blob.Tags.Name != nil {
+		info["name"] = blob.Tags.Name
+	}
+	if blob.Tags.Session != nil {
+		info["session"] = blob.Tags.Session
+	}
+	info["location"] = getBlobUri(r, blob.Key)
+	info["data"] = getDataUri(r, blob.Key)
+
+	for k, v := range blob.Tags.CustomTags {
+		if len(v) == 1 {
+			info[k] = v[0]
+		} else {
+			info[k] = v
+		}
+	}
+
+	return info
 }
 
 func writeJson(w http.ResponseWriter, r *http.Request, v interface{}) {

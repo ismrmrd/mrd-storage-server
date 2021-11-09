@@ -45,7 +45,7 @@ func UnixTimeMsToTime(timeValueMs int64) time.Time {
 }
 
 type MetadataDatabase interface {
-	StageBlobMetadata(ctx context.Context, key BlobKey, tags *BlobTags) error
+	StageBlobMetadata(ctx context.Context, key BlobKey, tags *BlobTags) (*BlobInfo, error)
 	CompleteStagedBlobMetadata(ctx context.Context, key BlobKey) error
 	RevertStagedBlobMetadata(ctx context.Context, key BlobKey) error
 	GetPageOfExpiredStagedBlobMetadata(ctx context.Context, olderThan time.Time) ([]BlobKey, error)

@@ -3,12 +3,11 @@ package api
 import (
 	"errors"
 	"fmt"
-	"net/http"
-	"regexp"
-
 	"github.com/gofrs/uuid"
 	"github.com/ismrmrd/mrd-storage-server/core"
 	log "github.com/sirupsen/logrus"
+	"net/http"
+	"regexp"
 )
 
 const (
@@ -71,7 +70,8 @@ func (handler *Handler) CreateBlob(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := handler.db.StageBlobMetadata(r.Context(), key, &tags); err != nil {
+	blobInfo, err := handler.db.StageBlobMetadata(r.Context(), key, &tags)
+	if err != nil {
 		log.Errorf("Failed to stage blob metadata: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -94,8 +94,8 @@ func (handler *Handler) CreateBlob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Add("Location", getBlobUri(r, key))
 	w.WriteHeader(http.StatusCreated)
+	writeJson(w, r, CreateBlobInfo(r, blobInfo))
 }
 
 func ValidateTagName(tagName string, tagValues []string) error {

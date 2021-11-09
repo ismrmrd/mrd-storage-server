@@ -20,7 +20,8 @@ The tags are:
 | `name`             | `mrd-tag-name`         | `name`            | The name of the blob.                                                                                                       |
 | `[custom-tag]`     | `mrd-tag-[custom-tag]` | `[custom-tag]`    | Custom tag names cannot collide with existing tags in this table. Unlike system tags, custom tags can have multiple values. |
 | `content-type`     | `Content-Type`         | `N/A`             | The blob MIME type. Using the standard HTTP header.                                                                         |
-| `uri`              | `Location`             | `N/A`             | A URI for reading the blob. System-assigned and globally unique. `[base]/v1/blobs/{{id}}`                                    |
+| `location`         | `Location`             | `N/A`             | A URI for reading the blob metadata. System-assigned and globally unique. `[base]/v1/blobs/{{id}}`                                    |
+| `data`             | `N/A`                  | `N/A`             | A URI for reading the blob data. System-assigned and globally unique. `[base]/v1/blobs/{{id}}/data`
 | `last-modified`    | `Last-Modified`        | `N/A`             | The blob's creation timestamp. Using the standard HTTP header, even though blobs are immutable.                             |
 
 Tag names are case-insensitive, but their values are case-sensitive.
@@ -32,7 +33,7 @@ Tag names are case-insensitive, but their values are case-sensitive.
 Tag values are specified as query string parameters of a `POST` request:
 
 ```
-POST http://localhost:3333/v1/blobs?subject=123&session=mysession&name=NoiseCovariance
+POST http://localhost:3333/v1/blobs/data?subject=123&session=mysession&name=NoiseCovariance
 Content-Type: text/plain
 
 This is my content
@@ -41,17 +42,26 @@ This is my content
 Response:
 ```
 HTTP/1.1 201 Created
-Location: http://localhost:3333/v1/blobs/49faf89d-9e4d-4ff5-9b2c-d1db39bcdb2b-123
-Date: Wed, 20 Oct 2021 15:07:17 GMT
-Content-Length: 0
-Connection: close
+Date: Fri, 05 Nov 2021 10:51:54 GMT
+Content-Length: 310
+Content-Type: text/plain; charset=utf-8
+
+{
+   "contentType":"text/plain",
+   "data":"http://localhost:3333/v1/blobs/c8a3aa43-04c0-4acb-9154-ce7b281ec274-123/data",
+   "lastModified":"2021-11-05T11:51:54.036+01:00",
+   "location":"http://localhost:3333/v1/blobs/c8a3aa43-04c0-4acb-9154-ce7b281ec274-123",
+   "name":"NoiseCovariance",
+   "session":"mysession",
+   "subject":"123"
+}
 ```
 
 ### Reading a Blob
 
-The `Location` header of the `POST` response contains a link the `GET` the blob:
+The `data` attribute in the `POST` response body contains a link where you can `GET` the blob content:
 ```
-GET http://localhost:3333/v1/blobs/49faf89d-9e4d-4ff5-9b2c-d1db39bcdb2b-123
+GET http://localhost:3333/v1/blobs/c8a3aa43-04c0-4acb-9154-ce7b281ec274-123/data
 ```
 
 Response:
@@ -59,13 +69,12 @@ Response:
 ```
 HTTP/1.1 200 OK
 Content-Type: text/plain
-Last-Modified: Wed, 20 Oct 2021 15:07:17 GMT
+Last-Modified: Fri, 05 Nov 2021 11:51:54 GMT
 Mrd-Tag-Name: NoiseCovariance
 Mrd-Tag-Session: mysession
 Mrd-Tag-Subject: 123
-Date: Wed, 20 Oct 2021 15:08:19 GMT
+Date: Fri, 05 Nov 2021 10:54:30 GMT
 Content-Length: 18
-Connection: close
 
 This is my content
 ```
@@ -83,16 +92,16 @@ Response:
 ```
 HTTP/1.1 200 OK
 Content-Type: application/json; charset=utf-8
-Date: Wed, 20 Oct 2021 15:12:56 GMT
-Content-Length: 359
-Connection: close
+Date: Fri, 05 Nov 2021 10:55:26 GMT
+Content-Length: 322
 
 {
   "items": [
     {
       "contentType": "text/plain",
-      "lastModified": "2021-10-20T15:07:17.224Z",
-      "location": "http://localhost:3333/v1/blobs/49faf89d-9e4d-4ff5-9b2c-d1db39bcdb2b-123",
+      "data": "http://localhost:3333/v1/blobs/c8a3aa43-04c0-4acb-9154-ce7b281ec274-123/data",
+      "lastModified": "2021-11-05T11:51:54.036+01:00",
+      "location": "http://localhost:3333/v1/blobs/c8a3aa43-04c0-4acb-9154-ce7b281ec274-123",
       "name": "NoiseCovariance",
       "session": "mysession",
       "subject": "123"
@@ -101,27 +110,27 @@ Connection: close
 }
 ```
 
-Items are sorted in descing order of creation. If not all results fit in a single reponse, there will be a `nextLink` field in the response:
+Items are sorted in descending order of creation. If not all results fit in a single response, there will be a `nextLink` field in the response:
 
 ```
 HTTP/1.1 200 OK
 Content-Type: application/json; charset=utf-8
-Date: Wed, 20 Oct 2021 15:12:56 GMT
-Content-Length: 359
-Connection: close
+Date: Fri, 05 Nov 2021 10:57:43 GMT
+Content-Length: 458
 
 {
   "items": [
     {
       "contentType": "text/plain",
-      "lastModified": "2021-10-20T15:07:17.224Z",
-      "location": "http://localhost:3333/v1/blobs/49faf89d-9e4d-4ff5-9b2c-d1db39bcdb2b-123",
+      "data": "http://localhost:3333/v1/blobs/b8b1cac9-f9e6-4f86-b6c6-5eb6bd6cef2a-123/data",
+      "lastModified": "2021-11-05T11:57:16.605+01:00",
+      "location": "http://localhost:3333/v1/blobs/b8b1cac9-f9e6-4f86-b6c6-5eb6bd6cef2a-123",
       "name": "NoiseCovariance",
       "session": "mysession",
       "subject": "123"
     }
   ],
-  "nextLink": "http://localhost:3333/v1/blobs?_ct=eyJ0cyI6MTYzNDc0MjQzNzIyNH0&_limit=1&name=NoiseCovariance&session=mysession&subject=123"
+  "nextLink": "http://localhost:3333/v1/blobs?_ct=eyJ0cyI6MTYzNjEwOTgzNjYwNX0&_limit=1&name=NoiseCovariance&session=mysession&subject=123"
 }
 ```
 
@@ -138,21 +147,20 @@ This will exclude results that were created after the given time.
 There is a shortcut to get the latest blob matching a search query in one request at the `/v1/blobs/latest` endpoint:
 
 ```
-GET http://localhost:3333/v1/blobs/latest?subject=123&session=mysession&name=NoiseCovariance
+GET http://localhost:3333/v1/blobs/data/latest?subject=123&session=mysession&name=NoiseCovariance
 ```
 
 Response:
 ```
 HTTP/1.1 200 OK
 Content-Type: text/plain
-Last-Modified: Wed, 20 Oct 2021 15:07:17 GMT
-Location: http://localhost:3333/v1/blobs/49faf89d-9e4d-4ff5-9b2c-d1db39bcdb2b-123
+Last-Modified: Fri, 05 Nov 2021 11:57:16 GMT
+Location: http://localhost:3333/v1/blobs/b8b1cac9-f9e6-4f86-b6c6-5eb6bd6cef2a-123
 Mrd-Tag-Name: NoiseCovariance
 Mrd-Tag-Session: mysession
 Mrd-Tag-Subject: 123
-Date: Wed, 20 Oct 2021 15:15:41 GMT
+Date: Fri, 05 Nov 2021 11:03:58 GMT
 Content-Length: 18
-Connection: close
 
 This is my content
 ```
@@ -160,7 +168,7 @@ This is my content
 The `_at` parameter can be used here as well to request the latest blob that was created no later than a given time.
 
 ```
-GET http://localhost:3333/v1/blobs/latest?subject=123&session=mysession&name=NoiseCovariance&_at=2021-10-19T15:07:17.224Z
+GET http://localhost:3333/v1/blobs/data/latest?subject=123&session=mysession&name=NoiseCovariance&_at=2021-10-19T15:07:17.224Z
 ```
 
 ### Custom tags
@@ -168,15 +176,16 @@ GET http://localhost:3333/v1/blobs/latest?subject=123&session=mysession&name=Noi
 Custom tags can be provded for blobs. Unlike system tags, custom tags can have many values:
 
 ```
-POST http://localhost:3333/v1/blobs?subject=someone&customTag1=a&customTag1=b
+POST http://localhost:3333/v1/blobs/data?subject=someone&customTag1=a&customTag1=b
 ```
 
 ```
 HTTP/1.1 201 Created
-Location: http://localhost:3333/v1/blobs/9e5c32e1-4b76-4098-bf72-48602efc274f-someone
-Date: Thu, 21 Oct 2021 21:01:53 GMT
-Content-Length: 0
-Connection: close
+Date: Fri, 05 Nov 2021 11:05:44 GMT
+Content-Length: 298
+Content-Type: text/plain; charset=utf-8
+
+{"contentType":"text/plain","customtag1":["a","b"],"data":"http://localhost:3333/v1/blobs/35d4ae47-6e1c-4881-adb9-5581cededcbb-someone/data","lastModified":"2021-11-05T12:05:44.037+01:00","location":"http://localhost:3333/v1/blobs/35d4ae47-6e1c-4881-adb9-5581cededcbb-someone","subject":"someone"}
 ```
 
 When a custom tag has multiple values, searches match any of the values:
@@ -188,19 +197,20 @@ GET http://localhost:3333/v1/blobs?subject=someone&customTag1=a
 ```
 HTTP/1.1 200 OK
 Content-Type: application/json; charset=utf-8
-Date: Thu, 21 Oct 2021 21:05:16 GMT
-Content-Length: 184
-Connection: close
+Date: Fri, 05 Nov 2021 11:06:58 GMT
+Content-Length: 310
 
 {
   "items": [
     {
+      "contentType": "text/plain",
       "customtag1": [
         "a",
         "b"
       ],
-      "lastModified": "2021-10-21T21:01:53.666Z",
-      "location": "http://localhost:3333/v1/blobs/9e5c32e1-4b76-4098-bf72-48602efc274f-someone",
+      "data": "http://localhost:3333/v1/blobs/35d4ae47-6e1c-4881-adb9-5581cededcbb-someone/data",
+      "lastModified": "2021-11-05T12:05:44.037+01:00",
+      "location": "http://localhost:3333/v1/blobs/35d4ae47-6e1c-4881-adb9-5581cededcbb-someone",
       "subject": "someone"
     }
   ]
@@ -216,9 +226,8 @@ GET http://localhost:3333/v1/blobs?subject=someone&customTag1=a&customTag1=missi
 ```
 HTTP/1.1 200 OK
 Content-Type: application/json; charset=utf-8
-Date: Thu, 21 Oct 2021 21:07:10 GMT
+Date: Fri, 05 Nov 2021 11:07:38 GMT
 Content-Length: 13
-Connection: close
 
 {
   "items": []
@@ -232,19 +241,20 @@ GET http://localhost:3333/v1/blobs?subject=someone&customTag1=a&customTag1=b
 ```
 HTTP/1.1 200 OK
 Content-Type: application/json; charset=utf-8
-Date: Thu, 21 Oct 2021 21:08:13 GMT
-Content-Length: 184
-Connection: close
+Date: Fri, 05 Nov 2021 11:08:05 GMT
+Content-Length: 310
 
 {
   "items": [
     {
+      "contentType": "text/plain",
       "customtag1": [
         "a",
         "b"
       ],
-      "lastModified": "2021-10-21T21:01:53.666Z",
-      "location": "http://localhost:3333/v1/blobs/9e5c32e1-4b76-4098-bf72-48602efc274f-someone",
+      "data": "http://localhost:3333/v1/blobs/35d4ae47-6e1c-4881-adb9-5581cededcbb-someone/data",
+      "lastModified": "2021-11-05T12:05:44.037+01:00",
+      "location": "http://localhost:3333/v1/blobs/35d4ae47-6e1c-4881-adb9-5581cededcbb-someone",
       "subject": "someone"
     }
   ]

@@ -120,7 +120,7 @@ func createRepository(dialector gorm.Dialector) (core.MetadataDatabase, error) {
 	return repository, err
 }
 
-func (r databaseRepository) StageBlobMetadata(ctx context.Context, key core.BlobKey, tags *core.BlobTags) error {
+func (r databaseRepository) StageBlobMetadata(ctx context.Context, key core.BlobKey, tags *core.BlobTags) (*core.BlobInfo, error) {
 	metadata := blobMetadata{
 		Subject:     key.Subject,
 		Id:          key.Id,
@@ -131,13 +131,13 @@ func (r databaseRepository) StageBlobMetadata(ctx context.Context, key core.Blob
 		Staged:      true,
 	}
 
-	if len(tags.CustomTags) == 0 {
-		return r.db.WithContext(ctx).Create(&metadata).Error
-	}
-
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&metadata).Error; err != nil {
 			return err
+		}
+
+		if len(tags.CustomTags) == 0 {
+			return nil
 		}
 
 		customMetadata := make([]customBlobMetadata, 0, len(tags.CustomTags))
@@ -157,6 +157,12 @@ func (r databaseRepository) StageBlobMetadata(ctx context.Context, key core.Blob
 
 		return tx.Create(customMetadata).Error
 	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &core.BlobInfo{Key: key, CreatedAt: core.UnixTimeMsToTime(metadata.CreatedAt), Tags: *tags}, nil
 }
 
 func (r databaseRepository) RevertStagedBlobMetadata(ctx context.Context, key core.BlobKey) error {
