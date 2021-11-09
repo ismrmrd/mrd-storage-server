@@ -151,7 +151,7 @@ func getDataUri(r *http.Request, key core.BlobKey) string {
 func CreateBlobInfo(r *http.Request, blob *core.BlobInfo) map[string]interface{} {
 
 	info := make(map[string]interface{})
-	info["lastModified"] = blob.CreatedAt.Format(time.RFC3339Nano)
+	info["lastModified"] = blob.CreatedAt.UTC().Format(time.RFC3339Nano)
 
 	info["subject"] = blob.Key.Subject
 	if blob.Tags.ContentType != nil {

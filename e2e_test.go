@@ -45,6 +45,10 @@ func init() {
 		return
 	}
 
+	// Put the server in a non-UTC time zone so that we
+	// can verify that times are always returned in UTC and not the server's time zone.
+	time.Local = time.FixedZone("MyTimeZone", 3600)
+
 	config := loadConfig()
 	config.LogRequests = false
 
@@ -279,6 +283,7 @@ func TestSearchPaging(t *testing.T) {
 		previousResult := fullResults.Results.Items[i-1]
 		thisResult := fullResults.Results.Items[i]
 		if prevTime, thisTime := previousResult["lastModified"].(string), thisResult["lastModified"].(string); prevTime != thisTime {
+			assert.Regexp(t, "Z$", thisTime, "Datetime in response not in UTC")
 			atQuery := fmt.Sprintf("%s&_at=%s", originalQuery, gourl.QueryEscape(thisTime))
 			atRes := search(t, atQuery)
 

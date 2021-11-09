@@ -166,18 +166,20 @@ func (r databaseRepository) StageBlobMetadata(ctx context.Context, key core.Blob
 }
 
 func (r databaseRepository) RevertStagedBlobMetadata(ctx context.Context, key core.BlobKey) error {
-	res := r.db.WithContext(ctx).
-		Where("subject = ? AND id = ? AND staged = ?", key.Subject, key.Id, true).
-		Delete(&blobMetadata{})
+	return r.db.WithContext(ctx).Transaction(
+		func(tx *gorm.DB) error {
+			res := tx.Where("subject = ? AND id = ? AND staged = ?", key.Subject, key.Id, true).
+				Delete(&blobMetadata{})
+			if res.Error != nil {
+				return res.Error
+			}
+			if res.RowsAffected == 0 {
+				return core.ErrStagedRecordNotFound
+			}
 
-	if res.Error != nil {
-		return res.Error
-	}
-	if res.RowsAffected == 0 {
-		return core.ErrStagedRecordNotFound
-	}
-
-	return nil
+			return tx.Where("blob_subject = ? AND blob_id = ?", key.Subject, key.Id).
+				Delete(&customBlobMetadata{}).Error
+		})
 }
 
 func (r databaseRepository) CompleteStagedBlobMetadata(ctx context.Context, key core.BlobKey) error {

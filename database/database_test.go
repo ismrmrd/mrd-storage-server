@@ -51,7 +51,7 @@ func TestStagedBlobMetadataCleanedUpOnRevert(t *testing.T) {
 	require.Nil(t, err)
 	key := core.BlobKey{Subject: "a", Id: id}
 
-	err = db.StageBlobMetadata(context.Background(), key, &core.BlobTags{})
+	err = db.StageBlobMetadata(context.Background(), key, &core.BlobTags{CustomTags: map[string][]string{"foo": {"bar"}}})
 	require.Nil(t, err)
 
 	err = db.RevertStagedBlobMetadata(context.Background(), key)
@@ -59,6 +59,14 @@ func TestStagedBlobMetadataCleanedUpOnRevert(t *testing.T) {
 
 	err = db.RevertStagedBlobMetadata(context.Background(), key)
 	assert.ErrorIs(t, err, core.ErrStagedRecordNotFound)
+
+	err = db.StageBlobMetadata(context.Background(), key, &core.BlobTags{})
+	require.Nil(t, err)
+	err = db.CompleteStagedBlobMetadata(context.Background(), key)
+	require.Nil(t, err)
+	blobInfo, err := db.GetBlobMetadata(context.Background(), key)
+	require.Nil(t, err)
+	assert.Empty(t, blobInfo.Tags.CustomTags, "Residual custom tags remain after RevertStagedBlobMetadata call")
 }
 
 func TestSchemaNotDowngraded(t *testing.T) {
