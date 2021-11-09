@@ -78,7 +78,7 @@ func (handler *Handler) GetLatestBlobData(w http.ResponseWriter, r *http.Request
 
 	w.Header().Add("Location", getBlobUri(r, latestBlobInfo.Key))
 
-	handler.BlobResponse(w, r, &latestBlobInfo)
+	handler.BlobDataResponse(w, r, &latestBlobInfo)
 }
 
 func getSearchParameters(w http.ResponseWriter, r *http.Request) (tags url.Values, at *time.Time, ct *core.ContinutationToken, pageSize int, ok bool) {
