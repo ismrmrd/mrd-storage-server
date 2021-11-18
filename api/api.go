@@ -152,6 +152,9 @@ func CreateBlobInfo(r *http.Request, blob *core.BlobInfo) map[string]interface{}
 
 	info := make(map[string]interface{})
 	info["lastModified"] = blob.CreatedAt.UTC().Format(time.RFC3339Nano)
+	if blob.ExpiresAt != nil {
+		info["expires"] = blob.ExpiresAt.UTC().Format(time.RFC3339Nano)
+	}
 
 	info["subject"] = blob.Key.Subject
 	if blob.Tags.ContentType != nil {

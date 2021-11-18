@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"regexp"
+	"time"
 )
 
 const (
@@ -26,6 +27,7 @@ var (
 	tagNameRegex, _     = regexp.Compile(`(^[a-zA-Z][a-zA-Z0-9_\-]{0,63}$)|$null`)
 	commonTagValidator  = CombineTagValidators(ValidateTagName, ValidateGenericTagValues)
 	systemTagValidator  = CombineTagValidators(commonTagValidator, ValidateOnlyOneTag)
+	ttlTagValidator     = CombineTagValidators(ValidateTimeToLive, systemTagValidator)
 	subjectTagValidator = CombineTagValidators(ValidateSubjectTagValue, systemTagValidator)
 )
 
@@ -80,7 +82,7 @@ func (handler *Handler) CreateBlob(w http.ResponseWriter, r *http.Request) {
 	if err := handler.store.SaveBlob(r.Context(), r.Body, key); err != nil {
 		log.Errorf("Failed to save blob: %v", err)
 
-		err = handler.db.RevertStagedBlobMetadata(r.Context(), key)
+		err = handler.db.DeleteBlobMetadata(r.Context(), key)
 		if err != nil {
 			log.Errorf("Failed to revert staged blob metadata: %v", err)
 		}
@@ -138,6 +140,17 @@ func ValidateSubjectTagValue(tagName string, tagValues []string) error {
 	return nil
 }
 
+func ValidateTimeToLive(tagName string, tagValues []string) error {
+
+	for _, t := range tagValues {
+		if _, err := time.ParseDuration(t); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func CombineTagValidators(validators ...TagValidator) TagValidator {
 	return func(tagName string, tagValues []string) error {
 		for _, v := range validators {
@@ -150,8 +163,8 @@ func CombineTagValidators(validators ...TagValidator) TagValidator {
 	}
 }
 
-func ValidateAndStoreOptionalSystemTag(tagName string, tagValues []string, field **string) error {
-	if err := systemTagValidator(tagName, tagValues); err != nil {
+func ValidateAndStoreOptionalSystemTag(tagName string, tagValues []string, field **string, validator func (string, []string) error) error {
+	if err := validator(tagName, tagValues); err != nil {
 		return err
 	}
 
@@ -162,11 +175,13 @@ func ValidateAndStoreOptionalSystemTag(tagName string, tagValues []string, field
 func ValidateAndStoreTag(tags *core.BlobTags, tagName string, tagValues []string) error {
 	switch tagName {
 	case "device":
-		return ValidateAndStoreOptionalSystemTag(tagName, tagValues, &tags.Device)
+		return ValidateAndStoreOptionalSystemTag(tagName, tagValues, &tags.Device, systemTagValidator)
 	case "name":
-		return ValidateAndStoreOptionalSystemTag(tagName, tagValues, &tags.Name)
+		return ValidateAndStoreOptionalSystemTag(tagName, tagValues, &tags.Name, systemTagValidator)
 	case "session":
-		return ValidateAndStoreOptionalSystemTag(tagName, tagValues, &tags.Session)
+		return ValidateAndStoreOptionalSystemTag(tagName, tagValues, &tags.Session, systemTagValidator)
+	case "ttl":
+		return ValidateAndStoreOptionalSystemTag(tagName, tagValues, &tags.TimeToLive, ttlTagValidator)
 	default:
 		if err := commonTagValidator(tagName, tagValues); err != nil {
 			return err

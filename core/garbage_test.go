@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Ensure garbage collection completes even when RevertStagedBlobMetadata
-// returns ErrStagedRecordNotFound, which suggests that another instance
+// Ensure garbage collection completes even when DeleteBlobMetadata
+// returns ErrBlobNotFound, which suggests that another instance
 // is performing garbage collection at the same time.
 func TestConcurrentGarbageCollection(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
@@ -24,13 +24,13 @@ func TestConcurrentGarbageCollection(t *testing.T) {
 	key := core.BlobKey{Subject: "s", Id: uuid.UUID{}}
 
 	db.EXPECT().
-		GetPageOfExpiredStagedBlobMetadata(gomock.Any(), gomock.Any()).
+		GetPageOfExpiredBlobMetadata(gomock.Any(), gomock.Any()).
 		Return([]core.BlobKey{key}, nil)
 
-	db.EXPECT().RevertStagedBlobMetadata(gomock.Any(), key).Return(core.ErrStagedRecordNotFound)
+	db.EXPECT().DeleteBlobMetadata(gomock.Any(), key).Return(core.ErrBlobNotFound)
 
 	db.EXPECT().
-		GetPageOfExpiredStagedBlobMetadata(gomock.Any(), gomock.Any()).
+		GetPageOfExpiredBlobMetadata(gomock.Any(), gomock.Any()).
 		Return([]core.BlobKey{}, nil)
 
 	store.EXPECT().DeleteBlob(gomock.Any(), key)

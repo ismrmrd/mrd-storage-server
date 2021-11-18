@@ -15,7 +15,7 @@ import (
 // records in the medatada database.
 func CollectGarbage(ctx context.Context, db MetadataDatabase, store BlobStore, olderThan time.Time) error {
 	for {
-		expiredKeys, err := db.GetPageOfExpiredStagedBlobMetadata(ctx, olderThan)
+		expiredKeys, err := db.GetPageOfExpiredBlobMetadata(ctx, olderThan)
 		if err != nil {
 			return err
 		}
@@ -39,7 +39,7 @@ func processExpiredKey(ctx context.Context, db MetadataDatabase, store BlobStore
 		return err
 	}
 
-	if err := db.RevertStagedBlobMetadata(ctx, key); err != nil && !errors.Is(err, ErrStagedRecordNotFound) {
+	if err := db.DeleteBlobMetadata(ctx, key); err != nil && !errors.Is(err, ErrBlobNotFound) {
 		return err
 	}
 

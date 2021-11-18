@@ -51,6 +51,20 @@ func (mr *MockMetadataDatabaseMockRecorder) CompleteStagedBlobMetadata(arg0, arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompleteStagedBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).CompleteStagedBlobMetadata), arg0, arg1)
 }
 
+// DeleteBlobMetadata mocks base method.
+func (m *MockMetadataDatabase) DeleteBlobMetadata(arg0 context.Context, arg1 core.BlobKey) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteBlobMetadata", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteBlobMetadata indicates an expected call of DeleteBlobMetadata.
+func (mr *MockMetadataDatabaseMockRecorder) DeleteBlobMetadata(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).DeleteBlobMetadata), arg0, arg1)
+}
+
 // GetBlobMetadata mocks base method.
 func (m *MockMetadataDatabase) GetBlobMetadata(arg0 context.Context, arg1 core.BlobKey) (*core.BlobInfo, error) {
 	m.ctrl.T.Helper()
@@ -66,33 +80,19 @@ func (mr *MockMetadataDatabaseMockRecorder) GetBlobMetadata(arg0, arg1 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).GetBlobMetadata), arg0, arg1)
 }
 
-// GetPageOfExpiredStagedBlobMetadata mocks base method.
-func (m *MockMetadataDatabase) GetPageOfExpiredStagedBlobMetadata(arg0 context.Context, arg1 time.Time) ([]core.BlobKey, error) {
+// GetPageOfExpiredBlobMetadata mocks base method.
+func (m *MockMetadataDatabase) GetPageOfExpiredBlobMetadata(arg0 context.Context, arg1 time.Time) ([]core.BlobKey, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPageOfExpiredStagedBlobMetadata", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetPageOfExpiredBlobMetadata", arg0, arg1)
 	ret0, _ := ret[0].([]core.BlobKey)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetPageOfExpiredStagedBlobMetadata indicates an expected call of GetPageOfExpiredStagedBlobMetadata.
-func (mr *MockMetadataDatabaseMockRecorder) GetPageOfExpiredStagedBlobMetadata(arg0, arg1 interface{}) *gomock.Call {
+// GetPageOfExpiredBlobMetadata indicates an expected call of GetPageOfExpiredBlobMetadata.
+func (mr *MockMetadataDatabaseMockRecorder) GetPageOfExpiredBlobMetadata(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPageOfExpiredStagedBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).GetPageOfExpiredStagedBlobMetadata), arg0, arg1)
-}
-
-// RevertStagedBlobMetadata mocks base method.
-func (m *MockMetadataDatabase) RevertStagedBlobMetadata(arg0 context.Context, arg1 core.BlobKey) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RevertStagedBlobMetadata", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// RevertStagedBlobMetadata indicates an expected call of RevertStagedBlobMetadata.
-func (mr *MockMetadataDatabaseMockRecorder) RevertStagedBlobMetadata(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevertStagedBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).RevertStagedBlobMetadata), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPageOfExpiredBlobMetadata", reflect.TypeOf((*MockMetadataDatabase)(nil).GetPageOfExpiredBlobMetadata), arg0, arg1)
 }
 
 // SearchBlobMetadata mocks base method.
@@ -112,11 +112,12 @@ func (mr *MockMetadataDatabaseMockRecorder) SearchBlobMetadata(arg0, arg1, arg2,
 }
 
 // StageBlobMetadata mocks base method.
-func (m *MockMetadataDatabase) StageBlobMetadata(arg0 context.Context, arg1 core.BlobKey, arg2 *core.BlobTags) error {
+func (m *MockMetadataDatabase) StageBlobMetadata(arg0 context.Context, arg1 core.BlobKey, arg2 *core.BlobTags) (*core.BlobInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StageBlobMetadata", arg0, arg1, arg2)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*core.BlobInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // StageBlobMetadata indicates an expected call of StageBlobMetadata.
