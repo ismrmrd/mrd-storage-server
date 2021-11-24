@@ -4,7 +4,6 @@ package core
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"io"
 	"time"
@@ -45,15 +44,6 @@ type ContinutationToken string
 
 func UnixTimeMsToTime(timeValueMs int64) time.Time {
 	return time.Unix(timeValueMs/1000, (timeValueMs%1000)*1000000)
-}
-
-func ExpirationToTime(expiration sql.NullInt64) *time.Time {
-	if !expiration.Valid {
-		return nil
-	}
-
-	value := UnixTimeMsToTime(expiration.Int64)
-	return &value
 }
 
 type MetadataDatabase interface {

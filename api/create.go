@@ -163,7 +163,7 @@ func CombineTagValidators(validators ...TagValidator) TagValidator {
 	}
 }
 
-func ValidateAndStoreOptionalSystemTag(tagName string, tagValues []string, field **string, validator func (string, []string) error) error {
+func ValidateAndStoreOptionalSystemTag(tagName string, tagValues []string, field **string, validator TagValidator) error {
 	if err := validator(tagName, tagValues); err != nil {
 		return err
 	}

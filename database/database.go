@@ -167,7 +167,7 @@ func (r databaseRepository) StageBlobMetadata(ctx context.Context, key core.Blob
 	return &core.BlobInfo{
 		Key: key,
 		CreatedAt: core.UnixTimeMsToTime(metadata.CreatedAt),
-		ExpiresAt: core.ExpirationToTime(metadata.ExpiresAt),
+		ExpiresAt: ExpirationToTime(metadata.ExpiresAt),
 		Tags: *tags}, nil
 }
 
@@ -285,10 +285,19 @@ func (r databaseRepository) SearchBlobMetadata(ctx context.Context, tags map[str
 }
 
 func (r databaseRepository) GetPageOfExpiredBlobMetadata(ctx context.Context, olderThan time.Time) ([]core.BlobKey, error) {
-	rows, err := r.db.
+
+	staged := r.db.
 		Model(blobMetadata{}).
 		Select(`subject, id`).
-		Where(`(staged = ? AND created_at < ?) OR (expires_at < ?)`, true, olderThan.UnixMilli(), olderThan.UnixMilli()).
+		Where(`staged = ? AND created_at < ?`, true, olderThan.UnixMilli())
+
+	expired := r.db.
+		Model(blobMetadata{}).
+		Select(`subject, id`).
+		Where(`expires_at < ?`, olderThan.UnixMilli())
+
+	rows, err := r.db.
+		Raw("? UNION ALL ?", staged, expired).
 		Order("created_at ASC").
 		Limit(200).
 		Rows()
@@ -382,7 +391,7 @@ func (r databaseRepository) readTagsFromMetadataSubquery(ctx context.Context, su
 		}
 
 		tmpBlobInfo.CreatedAt = core.UnixTimeMsToTime(timeValueMs)
-		tmpBlobInfo.ExpiresAt = core.ExpirationToTime(expirationValueMs)
+		tmpBlobInfo.ExpiresAt = ExpirationToTime(expirationValueMs)
 
 		if currentBlobInfo == nil || currentBlobInfo.Key.Id != tmpBlobInfo.Key.Id {
 			results = append(results, tmpBlobInfo)
@@ -418,3 +427,13 @@ func toExpiration(stringPointer *string) sql.NullInt64 {
 
 	return sql.NullInt64{Int64: time.Now().Add(dur).UnixMilli(), Valid: true}
 }
+
+func ExpirationToTime(expiration sql.NullInt64) *time.Time {
+	if !expiration.Valid {
+		return nil
+	}
+
+	value := core.UnixTimeMsToTime(expiration.Int64)
+	return &value
+}
+
