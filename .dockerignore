@@ -1,0 +1,13 @@
+_data/
+.devcontainer/
+.dockerignore
+.git/
+.gitignore
+.vscode/
+azure-pipelines
+docker-compose.yml
+Dockerfile
+LICENSE
+mrd-storage-server
+README.md
+run-tests.sh

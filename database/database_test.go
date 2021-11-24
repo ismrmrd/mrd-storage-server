@@ -34,7 +34,7 @@ func TestStagedBlobMetadataCleanedUpOnCompletion(t *testing.T) {
 	require.Nil(t, err)
 	key := core.BlobKey{Subject: "a", Id: id}
 
-	err = db.StageBlobMetadata(context.Background(), key, &core.BlobTags{})
+	_, err = db.StageBlobMetadata(context.Background(), key, &core.BlobTags{})
 	require.Nil(t, err)
 
 	err = db.CompleteStagedBlobMetadata(context.Background(), key)
@@ -51,7 +51,7 @@ func TestStagedBlobMetadataCleanedUpOnRevert(t *testing.T) {
 	require.Nil(t, err)
 	key := core.BlobKey{Subject: "a", Id: id}
 
-	err = db.StageBlobMetadata(context.Background(), key, &core.BlobTags{CustomTags: map[string][]string{"foo": {"bar"}}})
+	_, err = db.StageBlobMetadata(context.Background(), key, &core.BlobTags{CustomTags: map[string][]string{"foo": {"bar"}}})
 	require.Nil(t, err)
 
 	err = db.RevertStagedBlobMetadata(context.Background(), key)
@@ -60,7 +60,7 @@ func TestStagedBlobMetadataCleanedUpOnRevert(t *testing.T) {
 	err = db.RevertStagedBlobMetadata(context.Background(), key)
 	assert.ErrorIs(t, err, core.ErrStagedRecordNotFound)
 
-	err = db.StageBlobMetadata(context.Background(), key, &core.BlobTags{})
+	_, err = db.StageBlobMetadata(context.Background(), key, &core.BlobTags{})
 	require.Nil(t, err)
 	err = db.CompleteStagedBlobMetadata(context.Background(), key)
 	require.Nil(t, err)
