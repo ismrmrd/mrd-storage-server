@@ -272,9 +272,9 @@ By default, the storage server uses SQLite and the filesystem. The behavior of t
 | Variable                                      | Type    | Description                                                                                                              | Default Value       |
 |-----------------------------------------------|---------|--------------------------------------------------------------------------------------------------------------------------|---------------------|
 | MRD_STORAGE_SERVER_DATABASE_PROVIDER          | string  | The metadata database provider. Can be `sqlite` or `postgresql`.                                                         | sqlite              |
-| MRD_STORAGE_SERVER_DATABASE_CONNECTION_STRING | string  | The provider-specific connection string. For SQLite, the path to the database file.                                      | ./_data/metadata.db |
+| MRD_STORAGE_SERVER_DATABASE_CONNECTION_STRING | string  | The provider-specific connection string. For SQLite, the path to the database file.                                      | ./data/metadata.db |
 | MRD_STORAGE_SERVER_STORAGE_PROVIDER           | string  | The blob storage provider. Can be `filesystem` or `azureblob`.                                                           | filesystem          |
-| MRD_STORAGE_SERVER_STORAGE_CONNECTION_STRING  | string  | The provider-specific connection string. For the filesystem provider, the path to the directory in which to store files. | ./_data/blobs       |
+| MRD_STORAGE_SERVER_STORAGE_CONNECTION_STRING  | string  | The provider-specific connection string. For the filesystem provider, the path to the directory in which to store files. | ./data/blobs       |
 | MRD_STORAGE_SERVER_STORAGE_PORT               | integer | The port to listen on.                                                                                                   | 3333                |
 | MRD_STORAGE_SERVER_STORAGE_LOG_REQUESTS       | boolean | Whether to log the URI, status code, and duration of each HTTP request.                                                  | true                |
 

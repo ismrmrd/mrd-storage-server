@@ -23,34 +23,32 @@ services:
 
   mrd-sqlite-azurite:
     profiles: ["remote"]
-    image: ${MRD_STORAGE_SERVER_IMAGE}
+    build: .
     ports:
       - 3334:3333
     environment:
       - MRD_STORAGE_SERVER_DATABASE_PROVIDER=sqlite
-      - MRD_STORAGE_SERVER_DATABASE_CONNECTION_STRING=/metadata/metadata.db
+      - MRD_STORAGE_SERVER_DATABASE_CONNECTION_STRING=/data/metadata.db
       - MRD_STORAGE_SERVER_STORAGE_PROVIDER=azureblob
       - MRD_STORAGE_SERVER_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1
     volumes:
-      - type: volume
-        target: /metadata
+      - /data
     depends_on:
       azurite:
         condition: service_started
 
   mrd-postgres-filesystem:
     profiles: ["remote"]
-    image: ${MRD_STORAGE_SERVER_IMAGE}
+    build: .
     ports:
       - 3335:3333
     environment:
       - MRD_STORAGE_SERVER_DATABASE_PROVIDER=postgresql
       - MRD_STORAGE_SERVER_DATABASE_CONNECTION_STRING=user=mrd password=mrd dbname=mrd host=postgres port=5432 sslmode=disable
       - MRD_STORAGE_SERVER_STORAGE_PROVIDER=filesystem
-      - MRD_STORAGE_SERVER_STORAGE_CONNECTION_STRING=/data
+      - MRD_STORAGE_SERVER_STORAGE_CONNECTION_STRING=/data/blobs
     volumes:
-      - type: volume
-        target: /data
+      - /data
     depends_on:
       postgres:
         condition: service_healthy

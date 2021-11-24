@@ -26,7 +26,7 @@ func TestStorageWriteFailureRevertsStagedMetadata(t *testing.T) {
 
 	mockMetadataDatabase.EXPECT().
 		StageBlobMetadata(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(nil)
+		Return(nil, nil)
 
 	mockMetadataDatabase.EXPECT().
 		RevertStagedBlobMetadata(gomock.Any(), gomock.Any()).
@@ -53,7 +53,7 @@ func TestStagingFailureResultsInAbortedRequest(t *testing.T) {
 
 	mockMetadataDatabase.EXPECT().
 		StageBlobMetadata(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(errors.New("failed to write to database"))
+		Return(nil, errors.New("failed to write to database"))
 
 	handler := Handler{db: mockMetadataDatabase, store: mockBlobStore}
 

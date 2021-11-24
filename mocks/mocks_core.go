@@ -112,11 +112,12 @@ func (mr *MockMetadataDatabaseMockRecorder) SearchBlobMetadata(arg0, arg1, arg2,
 }
 
 // StageBlobMetadata mocks base method.
-func (m *MockMetadataDatabase) StageBlobMetadata(arg0 context.Context, arg1 core.BlobKey, arg2 *core.BlobTags) error {
+func (m *MockMetadataDatabase) StageBlobMetadata(arg0 context.Context, arg1 core.BlobKey, arg2 *core.BlobTags) (*core.BlobInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StageBlobMetadata", arg0, arg1, arg2)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*core.BlobInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // StageBlobMetadata indicates an expected call of StageBlobMetadata.
