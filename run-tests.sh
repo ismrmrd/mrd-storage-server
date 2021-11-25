@@ -55,7 +55,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ -n "${down:-}" ]; then
-  MRD_STORAGE_SERVER_IMAGE="unused" docker compose down --remove-orphans
+  docker compose down --remove-orphans
   exit
 fi
 
@@ -72,11 +72,12 @@ fi
 echo
 echo "******* Setting up environment for E2E tests *******"
 if [ -n "${remote:-}" ]; then
-  image=$(ko publish --local -t latest --base-import-paths .)
-  MRD_STORAGE_SERVER_IMAGE=${image} docker compose --profile remote up -d
+  profile=remote
 else
-  MRD_STORAGE_SERVER_IMAGE="unused" docker compose --profile inproc up -d
+  profile=inproc
 fi
+
+docker compose --profile "${profile}" up --build -d
 
 additionalConfigurations=()
 

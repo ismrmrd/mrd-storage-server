@@ -60,7 +60,7 @@ func init() {
 		config.DatabaseProvider = ConfigDatabaseProviderPostgresql
 		config.DatabaseConnectionString = "user=mrd password=mrd dbname=mrd host=localhost port=9920 sslmode=disable"
 	case "", ConfigDatabaseProviderSqlite:
-		// use defaults
+		config.DatabaseConnectionString = "./_data/metadata.db"
 	default:
 		log.Fatalf("Unrecognized TEST_DB_PROVIDER environment variable '%s'", dbProvider)
 	}
@@ -72,7 +72,7 @@ func init() {
 		config.StorageProvider = ConfigStorageProviderAzureBlob
 		config.StorageConnectionString = "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10000/devstoreaccount1;"
 	case "", ConfigStorageProviderFileSystem:
-		// use defaults
+		config.StorageConnectionString = "./_data/blobs"
 	default:
 		log.Fatalf("Unrecognized TEST_STORAGE_PROVIDER environment variable '%s'", storageProvider)
 	}
@@ -723,8 +723,8 @@ type SearchResponse struct {
 type MetaResponse struct {
 	Response
 	Location string
-	Data string
-	Meta map[string]interface{}
+	Data     string
+	Meta     map[string]interface{}
 }
 
 type ReadResponse struct {
