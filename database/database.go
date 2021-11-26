@@ -21,10 +21,11 @@ import (
 )
 
 const (
-	schemaVersionLatest         = 1
+	schemaVersionInitial        = 1
+	schemaVersionAddExpiresAt   = 2
+	schemaVersionLatest         = schemaVersionAddExpiresAt
 	schemaVersionCompleteStatus = "complete"
 )
-
 type schemaVersion struct {
 	Version int `gorm:"primaryKey;not null"`
 	Status  string
@@ -38,7 +39,7 @@ type blobMetadata struct {
 	Session     sql.NullString `gorm:"size:64;"`
 	ContentType sql.NullString `gorm:"size:64;"`
 	CreatedAt   int64          `gorm:"autoCreateTime:milli;index:idx_blob_metadata_search,priority:4;index:staged,where:staged = true"`
-	ExpiresAt   sql.NullInt64
+	ExpiresAt   sql.NullInt64  `gorm:"index:expires,where:expires_at is not null"`
 	Staged      bool
 	CustomTags  []customBlobMetadata `gorm:"foreignKey:BlobSubject,BlobId;references:Subject,Id;constraint:OnDelete:CASCADE"`
 }
@@ -291,19 +292,11 @@ func (r databaseRepository) SearchBlobMetadata(ctx context.Context, tags map[str
 
 func (r databaseRepository) GetPageOfExpiredBlobMetadata(ctx context.Context, olderThan time.Time) ([]core.BlobKey, error) {
 
-	staged := r.db.
-		Model(blobMetadata{}).
-		Select(`subject, id`).
-		Where(`staged = ? AND created_at < ?`, true, olderThan.UnixMilli())
-
-	expired := r.db.
-		Model(blobMetadata{}).
-		Select(`subject, id`).
-		Where(`expires_at < ?`, olderThan.UnixMilli())
-
 	rows, err := r.db.
-		Raw("? UNION ALL ?", staged, expired).
-		Order("created_at ASC").
+		Model(blobMetadata{}).
+		Select(`subject, id`).
+		Where(`staged = ? AND created_at < ?`, true, olderThan.UnixMilli()).
+		Or(`expires_at < ?`, olderThan.UnixMilli()).
 		Limit(200).
 		Rows()
 
