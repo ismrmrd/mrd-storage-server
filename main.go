@@ -105,9 +105,9 @@ func garbageCollectionLoop(ctx context.Context, db core.MetadataDatabase, blobSt
 
 type ConfigSpec struct {
 	DatabaseProvider         string `split_words:"true" default:"sqlite"`
-	DatabaseConnectionString string `split_words:"true" default:"/data/metadata.db"`
+	DatabaseConnectionString string `split_words:"true" default:"_data/metadata.db"`
 	StorageProvider          string `split_words:"true" default:"filesystem"`
-	StorageConnectionString  string `split_words:"true" default:"/data/blobs"`
+	StorageConnectionString  string `split_words:"true" default:"_data/blobs"`
 	Port                     int    `split_words:"true" default:"3333"`
 	LogRequests              bool   `split_words:"true" default:"true"`
 }

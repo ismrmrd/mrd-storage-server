@@ -51,8 +51,8 @@ type MetadataDatabase interface {
 	CompleteStagedBlobMetadata(ctx context.Context, key BlobKey) error
 	DeleteBlobMetadata(ctx context.Context, key BlobKey) error
 	GetPageOfExpiredBlobMetadata(ctx context.Context, olderThan time.Time) ([]BlobKey, error)
-	GetBlobMetadata(ctx context.Context, key BlobKey) (*BlobInfo, error)
-	SearchBlobMetadata(ctx context.Context, tags map[string][]string, at *time.Time, ct *ContinutationToken, pageSize int) ([]BlobInfo, *ContinutationToken, error)
+	GetBlobMetadata(ctx context.Context, key BlobKey, expiresAfter time.Time) (*BlobInfo, error)
+	SearchBlobMetadata(ctx context.Context, tags map[string][]string, at *time.Time, ct *ContinutationToken, pageSize int, expiresAfter time.Time) ([]BlobInfo, *ContinutationToken, error)
 }
 
 type BlobStore interface {

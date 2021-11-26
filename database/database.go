@@ -184,9 +184,13 @@ func (r databaseRepository) CompleteStagedBlobMetadata(ctx context.Context, key 
 	return nil
 }
 
-func (r databaseRepository) GetBlobMetadata(ctx context.Context, key core.BlobKey) (*core.BlobInfo, error) {
-	subquery := r.db.WithContext(ctx).Model(&blobMetadata{}).Where("subject = ? AND id = ?", key.Subject, key.Id)
-	blobs, err := r.readTagsFromMetadataSubquery(ctx, subquery)
+func (r databaseRepository) GetBlobMetadata(ctx context.Context, key core.BlobKey, expiresAfter time.Time) (*core.BlobInfo, error) {
+	query := r.db.WithContext(ctx).
+		Model(&blobMetadata{}).
+		Where("subject = ? AND id = ?", key.Subject, key.Id).
+		Where("expires_at > ? OR expires_at is null", expiresAfter.UnixMilli())
+
+	blobs, err := r.readTagsFromMetadataSubquery(ctx, query)
 
 	if err != nil {
 		return nil, err
@@ -218,30 +222,31 @@ func (r databaseRepository) DeleteBlobMetadata(ctx context.Context, key core.Blo
 		})
 }
 
-func (r databaseRepository) SearchBlobMetadata(ctx context.Context, tags map[string][]string, at *time.Time, ct *core.ContinutationToken, pageSize int) ([]core.BlobInfo, *core.ContinutationToken, error) {
+func (r databaseRepository) SearchBlobMetadata(ctx context.Context, tags map[string][]string, at *time.Time, ct *core.ContinutationToken, pageSize int, expiresAfter time.Time) ([]core.BlobInfo, *core.ContinutationToken, error) {
 
-	subquery := r.db.WithContext(ctx).Model(&blobMetadata{})
+	query := r.db.WithContext(ctx).Model(&blobMetadata{})
 
 	for k, values := range tags {
 		switch k {
 		case "subject", "device", "name", "session":
 			for _, v := range values {
-				subquery = subquery.Where(fmt.Sprintf("%s = ?", k), v)
+				query = query.Where(fmt.Sprintf("%s = ?", k), v)
 			}
 
 		default:
 			for _, v := range values {
-				subquery = subquery.Where("EXISTS (SELECT * FROM custom_blob_metadata WHERE blob_id = id AND blob_subject = subject and tag_name = ? AND tag_value = ?)", k, v)
+				query = query.Where("EXISTS (SELECT * FROM custom_blob_metadata WHERE blob_id = id AND blob_subject = subject and tag_name = ? AND tag_value = ?)", k, v)
 			}
 		}
 	}
 
-	subquery = subquery.
+	query = query.
+		Where("expires_at > ? OR expires_at is null", expiresAfter.UnixMilli()).
 		Order("created_at DESC, id DESC").
 		Limit(pageSize + 1)
 
 	if at != nil {
-		subquery = subquery.Where("created_at <= ?", at.UnixMilli())
+		query = query.Where("created_at <= ?", at.UnixMilli())
 	}
 
 	if ct != nil {
@@ -251,13 +256,13 @@ func (r databaseRepository) SearchBlobMetadata(ctx context.Context, tags map[str
 		}
 
 		if c.Id == nil {
-			subquery = subquery.Where("created_at < ?", c.CreatedTimeMs)
+			query = query.Where("created_at < ?", c.CreatedTimeMs)
 		} else {
-			subquery = subquery.Where("created_at = ? AND id < ? OR created_at < ?", c.CreatedTimeMs, c.Id, c.CreatedTimeMs)
+			query = query.Where("created_at = ? AND id < ? OR created_at < ?", c.CreatedTimeMs, c.Id, c.CreatedTimeMs)
 		}
 	}
 
-	results, err := r.readTagsFromMetadataSubquery(ctx, subquery)
+	results, err := r.readTagsFromMetadataSubquery(ctx, query)
 	if err != nil {
 		return nil, nil, err
 	}

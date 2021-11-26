@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/ismrmrd/mrd-storage-server/core"
@@ -12,7 +13,7 @@ import (
 
 type Responder func(http.ResponseWriter, *http.Request, *core.BlobInfo)
 
-func (handler *Handler) MakeBlobEndpoint(responder Responder) http.HandlerFunc {
+func (handler *Handler) MakeBlobEndpoint(responder Responder, grace time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		combinedId := chi.URLParam(r, "combined-id")
@@ -22,7 +23,7 @@ func (handler *Handler) MakeBlobEndpoint(responder Responder) http.HandlerFunc {
 			return
 		}
 
-		blobInfo, err := handler.db.GetBlobMetadata(r.Context(), key)
+		blobInfo, err := handler.db.GetBlobMetadata(r.Context(), key, time.Now().Add(-grace))
 		if err != nil {
 			if errors.Is(err, core.ErrRecordNotFound) {
 				w.WriteHeader(http.StatusNotFound)

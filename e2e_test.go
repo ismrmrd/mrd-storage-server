@@ -98,6 +98,7 @@ func TestInvalidTags(t *testing.T) {
 		{"Location", "subject=s&location=l"},
 		{"Last-Modified", "subject=s&lastModified=2021-10-18T16:56:15.693Z"},
 		{"ttl", "not-an-interval"},
+		{"ttl", "-1h"},
 		{"Many Subject tags", "subject=s&subject=s2"},
 		{"Subject empty", "subject="},
 		{"No subject tag", ""},
@@ -215,6 +216,53 @@ func TestCreateValidBlobTimeToLive(t *testing.T) {
 	}
 
 	require.True(t, almostEqual(expected, expires))
+}
+
+func TestExpiredBlobNotInSearchResults(t *testing.T) {
+
+	body := "An expired blob should not be displayed in search results."
+	subject := fmt.Sprint(time.Now().UnixNano())
+
+	for _, ttl := range []string{"0s", "10m", "10m"} {
+		response := create(
+			t,
+			fmt.Sprintf("subject=%s&session=expiration-search-test&ttl=%s&expiration-test=%s", subject, ttl, ttl),
+			"text/plain",
+			body)
+		require.Equal(t, http.StatusCreated, response.StatusCode)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+
+	response := search(t, fmt.Sprintf("subject=%s&session=expiration-search-test", subject))
+
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.Equal(t, 2, len(response.Results.Items))
+
+	for _, item := range response.Results.Items {
+		require.Equal(t, "10m", item["expiration-test"].(string))
+	}
+}
+
+func TestExpiredBlobNotFound(t *testing.T) {
+
+	body := "Getting an expired blob directly should return 404"
+	subject := fmt.Sprint(time.Now().UnixNano())
+
+	response := create(
+		t,
+		fmt.Sprintf("subject=%s&session=expiration-lookup-test&ttl=0s", subject),
+		"text/plain",
+		body)
+
+	require.Equal(t, http.StatusCreated, response.StatusCode)
+	require.Contains(t, response.Meta, "expires")
+
+	time.Sleep(50 * time.Millisecond)
+
+	response = get(t, response.Location)
+
+	require.Equal(t, http.StatusNotFound, response.StatusCode)
 }
 
 func TestBlobCreatedWithTimeToLiveHasExpiration(t *testing.T) {

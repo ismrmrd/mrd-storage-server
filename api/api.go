@@ -44,8 +44,8 @@ func BuildRouter(db core.MetadataDatabase, store core.BlobStore, logRequests boo
 			r.Post("/data", handler.CreateBlob)
 			r.Get("/", handler.SearchBlobs)
 			r.Get("/data/latest", handler.GetLatestBlobData)
-			r.Get("/{combined-id}", handler.MakeBlobEndpoint(handler.BlobMetadataResponse))
-			r.Get("/{combined-id}/data", handler.MakeBlobEndpoint(handler.BlobDataResponse))
+			r.Get("/{combined-id}", handler.MakeBlobEndpoint(handler.BlobMetadataResponse, 0 * time.Second))
+			r.Get("/{combined-id}/data", handler.MakeBlobEndpoint(handler.BlobDataResponse, 30 * time.Minute))
 		})
 	})
 
