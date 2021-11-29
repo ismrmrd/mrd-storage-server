@@ -92,6 +92,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           body: |
-            Container image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ### Container image
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
             
+            ### Changes
             ${{steps.github_release.outputs.changelog}}
