@@ -46,11 +46,8 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags : |
             type=sha,format=long
-            # branch event
             type=ref,event=branch
-            # tag event
             type=ref,event=tag
-            # pull request event
             type=ref,event=pr
 
       # Build and push Docker image with Buildx (don't push on PR)
