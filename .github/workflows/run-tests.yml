@@ -19,4 +19,4 @@ jobs:
         go-version: 1.17
 
     - name: run-tests.sh
-      run: ./run-tests.sh
+      run: ./run-tests.sh --remote --in-proc
