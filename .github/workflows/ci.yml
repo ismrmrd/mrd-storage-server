@@ -75,7 +75,7 @@ jobs:
   #         labels: ${{ steps.meta.outputs.labels }}
 
   release:
-    if: github.event_name == 'push' && github.ref_type == 'tag'
+    # if: github.event_name == 'push' && github.ref_type == 'tag'
     # needs: publish
     runs-on: ubuntu-latest
     steps:
@@ -87,6 +87,10 @@ jobs:
         uses: mikepenz/release-changelog-builder-action@v2.7.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          fromTag: "0.0.1"
+          toTag: "0.0.6"
+          commitMode: true
 
       - name: Release
         uses: softprops/action-gh-release@v1
@@ -95,7 +99,7 @@ jobs:
             ### Container image
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
             
-            ${{steps.github_release.outputs}}
+            ${{toJson( steps.github_release.outputs)}}d
 
             ### Changes
             ${{steps.github_release.outputs.changelog}}
