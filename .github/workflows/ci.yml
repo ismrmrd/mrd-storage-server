@@ -81,17 +81,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       
       - uses: fregante/release-with-changelog@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          exclude: '^Meta'
           commit-template: '- {title} ← {hash}'
           template: |
+            ### Container image
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+
             ### Changelog
 
             {commits}
 
-            {range}
+            ### Diff
 
-            ❤
+            {range}
