@@ -1,0 +1,11 @@
+name: 'Validate'
+description: 'Validates the code in this repo'
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17
+    - run: ${{ github.workspace }}/run-tests.sh --remote --in-proc
+      shell: bash
