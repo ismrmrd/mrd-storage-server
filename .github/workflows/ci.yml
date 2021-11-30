@@ -96,6 +96,6 @@ jobs:
 
             {commits}
 
-            ### Diff
+            ### Diffy
 
             {range}
