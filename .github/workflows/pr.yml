@@ -13,5 +13,5 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
         
-      - name: validate
+      - name: Validate
         uses: ./.github/actions/validate
