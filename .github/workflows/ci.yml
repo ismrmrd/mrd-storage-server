@@ -6,9 +6,7 @@ on:
     tags: [ 'v*.*.*' ]
 
 env:
-  # Use docker.io for Docker Hub if empty
   REGISTRY: ghcr.io
-  # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
@@ -20,6 +18,7 @@ jobs:
       packages: write
 
     steps:
+
       - name: Checkout
         uses: actions/checkout@v2
         with:
@@ -55,7 +54,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
       
       # Create a release
-      - uses: fregante/release-with-changelog@v3
+      - name: Create Release
+        uses: fregante/release-with-changelog@v3
         if: github.event_name == 'push' && github.ref_type == 'tag'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
