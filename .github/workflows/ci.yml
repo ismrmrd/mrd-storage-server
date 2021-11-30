@@ -13,7 +13,7 @@ env:
 
 jobs:
   validate:
-    uses: "${{github.repository}}/.github/workflows/validate.yml"
+    uses: ${{github.repository}}/.github/workflows/validate.yml@${{github.sha}}
 
   publish:
     needs: validate
