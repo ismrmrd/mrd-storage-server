@@ -28,6 +28,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: validate
+        uses: ./.github/actions/validate
+
       # Login against a Docker registry except on PR
       # https://github.com/docker/login-action
       - name: Log into registry ${{ env.REGISTRY }}
