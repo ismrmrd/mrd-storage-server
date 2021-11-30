@@ -82,24 +82,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       
-      - name: Build Changelog
-        id: github_release
-        uses: mikepenz/release-changelog-builder-action@v2.7.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: fregante/release-with-changelog@v3
         with:
-          fromTag: "v0.0.1"
-          toTag: "v0.0.6"
-          commitMode: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          exclude: '^Meta'
+          commit-template: '- {title} ← {hash}'
+          template: |
+            ### Changelog
 
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        with:
-          body: |
-            ### Container image
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
-            
-            ${{toJson( steps.github_release.outputs)}}d
+            {commits}
 
-            ### Changes
-            ${{steps.github_release.outputs.changelog}}
+            {range}
+
+            ❤
