@@ -12,17 +12,18 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  validate:
-    uses: ${{github.repository}}/.github/workflows/validate.yml@${{github.sha}}
 
   publish:
-    needs: validate
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
 
     steps:
+
+      - name: validate
+        uses: ./.github/actions/validate
+
       - name: Checkout
         uses: actions/checkout@v2
         with:
