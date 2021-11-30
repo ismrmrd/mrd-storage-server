@@ -89,13 +89,12 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-template: '- {title} ← {hash}'
           template: |
-            ### Container image
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ### Container image: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}`
 
             ### Changelog
 
             {commits}
 
-            ### Diffy
+            ### Diff
 
             {range}
