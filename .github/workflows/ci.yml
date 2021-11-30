@@ -67,6 +67,7 @@ jobs:
           fetch-depth: 0
       
       - uses: fregante/release-with-changelog@v3
+        name: Create Release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-template: '- {title} ← {hash}'
