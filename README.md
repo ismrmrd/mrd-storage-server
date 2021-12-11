@@ -278,9 +278,14 @@ By default, the storage server uses SQLite and the filesystem. The behavior of t
 | MRD_STORAGE_SERVER_STORAGE_PORT               | integer | The port to listen on.                                                                                                   | 3333                |
 | MRD_STORAGE_SERVER_STORAGE_LOG_REQUESTS       | boolean | Whether to log the URI, status code, and duration of each HTTP request.                                                  | true                |
 
+In addition, any of the above values can be provided as a file instead of being stored in environment variables, where they could end up exposed by logging tools. To do this, append `_FILE` to the environment variable name and provide the file path as the value. For example, you can write the database connection string to a file, and set the following environment variable pointing to the file:
+
+```bash
+export MRD_STORAGE_SERVER_DATABASE_CONNECTION_STRING_FILE="/path/to/the/connection_string_file.txt"
+```
+
 ## TODO:
 
-- Handle secrets as files
 - Migration tool
 - Support Azure Managed identity
 - Support Delete
