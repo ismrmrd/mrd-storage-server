@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kelseyhightower/envconfig"
+	"github.com/johnstairs/pathenvconfig"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/ismrmrd/mrd-storage-server/api"
@@ -39,7 +39,7 @@ func main() {
 
 func loadConfig() ConfigSpec {
 	var config ConfigSpec
-	err := envconfig.Process("MRD_STORAGE_SERVER", &config)
+	err := pathenvconfig.Process("MRD_STORAGE_SERVER", &config)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -104,10 +104,10 @@ func garbageCollectionLoop(ctx context.Context, db core.MetadataDatabase, blobSt
 }
 
 type ConfigSpec struct {
-	DatabaseProvider         string `split_words:"true" default:"sqlite"`
-	DatabaseConnectionString string `split_words:"true" default:"/data/metadata.db"`
-	StorageProvider          string `split_words:"true" default:"filesystem"`
-	StorageConnectionString  string `split_words:"true" default:"/data/blobs"`
-	Port                     int    `split_words:"true" default:"3333"`
-	LogRequests              bool   `split_words:"true" default:"true"`
+	DatabaseProvider         string `default:"sqlite"`
+	DatabaseConnectionString string `default:"/data/metadata.db"`
+	StorageProvider          string `default:"filesystem"`
+	StorageConnectionString  string `default:"/data/blobs"`
+	Port                     int    `default:"3333"`
+	LogRequests              bool   `default:"true"`
 }
