@@ -32,7 +32,7 @@ require (
 
 require (
 	github.com/golang/mock v1.6.0
-	github.com/johnstairs/pathenvconfig v0.0.0-20211210234032-57b1cc5a14d1
+	github.com/johnstairs/pathenvconfig v0.1.0
 	github.com/stretchr/testify v1.7.0
 )
 
