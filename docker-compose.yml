@@ -44,7 +44,8 @@ services:
       - 3335:3333
     environment:
       - MRD_STORAGE_SERVER_DATABASE_PROVIDER=postgresql
-      - MRD_STORAGE_SERVER_DATABASE_CONNECTION_STRING=user=mrd password=mrd dbname=mrd host=postgres port=5432 sslmode=disable
+      - MRD_STORAGE_SERVER_DATABASE_CONNECTION_STRING=user=mrd dbname=mrd host=postgres port=5432 sslmode=disable
+      - MRD_STORAGE_SERVER_DATABASE_PASSWORD=mrd
       - MRD_STORAGE_SERVER_STORAGE_PROVIDER=filesystem
       - MRD_STORAGE_SERVER_STORAGE_CONNECTION_STRING=/data/blobs
     volumes:

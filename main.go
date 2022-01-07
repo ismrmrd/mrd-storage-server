@@ -70,7 +70,7 @@ func createMetadataRepository(config ConfigSpec) (core.MetadataDatabase, error) 
 	case ConfigDatabaseProviderSqlite:
 		return database.OpenSqliteDatabase(config.DatabaseConnectionString)
 	case ConfigDatabaseProviderPostgresql:
-		return database.ConnectPostgresqlDatabase(config.DatabaseConnectionString)
+		return database.ConnectPostgresqlDatabase(config.DatabaseConnectionString, config.DatabasePassword)
 	}
 
 	return nil, fmt.Errorf("unrecognized database provider '%s'", config.DatabaseProvider)
@@ -105,9 +105,10 @@ func garbageCollectionLoop(ctx context.Context, db core.MetadataDatabase, blobSt
 
 type ConfigSpec struct {
 	DatabaseProvider         string `default:"sqlite"`
-	DatabaseConnectionString string `default:"/data/metadata.db"`
+	DatabaseConnectionString string `default:"_data/metadata.db"`
+	DatabasePassword         string
 	StorageProvider          string `default:"filesystem"`
-	StorageConnectionString  string `default:"/data/blobs"`
+	StorageConnectionString  string `default:"_data/blobs"`
 	Port                     int    `default:"3333"`
 	LogRequests              bool   `default:"true"`
 }
