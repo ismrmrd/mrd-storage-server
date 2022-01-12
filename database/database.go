@@ -69,7 +69,11 @@ func OpenSqliteDatabase(dbPath string) (core.MetadataDatabase, error) {
 	return createRepository(sqlite.Open(dbPath))
 }
 
-func ConnectPostgresqlDatabase(connectionString string) (core.MetadataDatabase, error) {
+func ConnectPostgresqlDatabase(connectionString, password string) (core.MetadataDatabase, error) {
+	if password != "" {
+		connectionString = fmt.Sprintf("%s password=%s", connectionString, password)
+	}
+
 	dialector := postgres.New(postgres.Config{
 		DSN:                  connectionString,
 		PreferSimpleProtocol: true,

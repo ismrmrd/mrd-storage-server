@@ -1,0 +1,19 @@
+name: pr
+
+on:
+  pull_request:
+    branches: [ main ]
+
+env:
+  DOCKER_BUILDKIT: 1
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Validate
+        uses: ./.github/actions/validate

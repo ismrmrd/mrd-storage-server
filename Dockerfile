@@ -13,12 +13,16 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o /go/bin/app
+RUN --mount=type=cache,target=/root/.cache/go-build go build -o /go/bin/app
 
 # Now copy it into our base image.
 FROM gcr.io/distroless/base-debian11
 
+# Set up /data as the default storage directory for filesystem-based providers.
 COPY --from=build --chown=nonroot:nonroot /empty/ /data
+ENV MRD_STORAGE_SERVER_DATABASE_CONNECTION_STRING=/data/metadata.db
+ENV MRD_STORAGE_SERVER_STORAGE_CONNECTION_STRING=/data/blobs
+
 COPY --from=build /go/bin/app /
 
 USER nonroot:nonroot
