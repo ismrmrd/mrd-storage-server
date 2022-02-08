@@ -97,8 +97,8 @@ func TestInvalidTags(t *testing.T) {
 		{"tag name that is too long", fmt.Sprintf("subject=sub&%s=abc", strings.Repeat("a", 65))},
 		{"Location", "subject=s&location=l"},
 		{"Last-Modified", "subject=s&lastModified=2021-10-18T16:56:15.693Z"},
-		{"ttl", "not-an-interval"},
-		{"ttl", "-1h"},
+		{"bad ttl", "subject=s&_ttl=not-an-interval"},
+		{"negative ttl", "subject=s&_ttl=-1h"},
 		{"Many Subject tags", "subject=s&subject=s2"},
 		{"Subject empty", "subject="},
 		{"No subject tag", ""},
@@ -194,7 +194,7 @@ func TestCreateValidBlobTimeToLive(t *testing.T) {
 
 	response := create(
 		t,
-		fmt.Sprintf("subject=%s&session=mysession&ttl=%s", subject, ttl),
+		fmt.Sprintf("subject=%s&session=mysession&_ttl=%s", subject, ttl),
 		"text/plain",
 		body)
 
@@ -211,8 +211,8 @@ func TestCreateValidBlobTimeToLive(t *testing.T) {
 	expires, err := time.Parse(time.RFC3339Nano, response.Meta["expires"].(string))
 	require.Nil(t, err)
 
-	almostEqual := func (a time.Time, b time.Time) bool {
-		return math.Abs(a.Sub(b).Seconds()) < 5e-2
+	almostEqual := func(a time.Time, b time.Time) bool {
+		return math.Abs(a.Sub(b).Seconds()) < 500e-3
 	}
 
 	require.True(t, almostEqual(expected, expires))
@@ -226,7 +226,7 @@ func TestExpiredBlobNotInSearchResults(t *testing.T) {
 	for _, ttl := range []string{"0s", "10m", "10m"} {
 		response := create(
 			t,
-			fmt.Sprintf("subject=%s&session=expiration-search-test&ttl=%s&expiration-test=%s", subject, ttl, ttl),
+			fmt.Sprintf("subject=%s&session=expiration-search-test&_ttl=%s&expiration-test=%s", subject, ttl, ttl),
 			"text/plain",
 			body)
 		require.Equal(t, http.StatusCreated, response.StatusCode)
@@ -251,7 +251,7 @@ func TestExpiredBlobNotFound(t *testing.T) {
 
 	response := create(
 		t,
-		fmt.Sprintf("subject=%s&session=expiration-lookup-test&ttl=0s", subject),
+		fmt.Sprintf("subject=%s&session=expiration-lookup-test&_ttl=0s", subject),
 		"text/plain",
 		body)
 
@@ -273,7 +273,7 @@ func TestBlobCreatedWithTimeToLiveHasExpiration(t *testing.T) {
 
 	createResponse := create(
 		t,
-		fmt.Sprintf("subject=%s&session=mysession&ttl=%s", subject, ttl),
+		fmt.Sprintf("subject=%s&session=mysession&_ttl=%s", subject, ttl),
 		"text/plain",
 		body)
 	require.Equal(t, http.StatusCreated, createResponse.StatusCode)
@@ -282,6 +282,22 @@ func TestBlobCreatedWithTimeToLiveHasExpiration(t *testing.T) {
 	require.Equal(t, http.StatusOK, readResponse.StatusCode)
 	require.NotNil(t, readResponse.Meta["expires"])
 	require.Equal(t, createResponse.Meta["expires"], readResponse.Meta["expires"])
+}
+
+func TestBlobCreateWithTimeToLiveHasExpirationDataHeader(t *testing.T) {
+	body := "This is a body. Just bytes really."
+	subject := fmt.Sprint(time.Now().UnixNano())
+	ttl := "5m"
+
+	createResponse := create(
+		t,
+		fmt.Sprintf("subject=%s&session=mysession&_ttl=%s", subject, ttl),
+		"text/plain",
+		body)
+	require.Equal(t, http.StatusCreated, createResponse.StatusCode)
+
+	data := read(t, createResponse.Data)
+	require.NotNil(t, data.ExpiresAt)
 }
 
 func TestCreateResponse(t *testing.T) {
@@ -591,6 +607,13 @@ func populateBlobResponse(t *testing.T, resp *http.Response) ReadResponse {
 		delete(headers, "Last-Modified")
 	}
 
+	if expiresAt, ok := headers["Expires"]; ok {
+		assert.Len(t, expiresAt, 1)
+		t, _ := time.Parse(http.TimeFormat, expiresAt[0])
+		readResponse.ExpiresAt = &t
+		delete(headers, "Expires")
+	}
+
 	reflectionTags := reflect.ValueOf(&readResponse.Tags).Elem()
 
 	for k, v := range headers {
@@ -697,7 +720,7 @@ func TestGarbageCollectionRemovesExpiredBlobs(t *testing.T) {
 
 	createResponse := create(
 		t,
-		fmt.Sprintf("subject=%s&session=%s&ttl=%s", subject, session, ttl),
+		fmt.Sprintf("subject=%s&session=%s&_ttl=%s", subject, session, ttl),
 		"text/plain",
 		body)
 	require.Equal(t, http.StatusCreated, createResponse.StatusCode)
@@ -778,6 +801,7 @@ type MetaResponse struct {
 type ReadResponse struct {
 	Response
 	CreatedAt *time.Time
+	ExpiresAt *time.Time
 	Body      string
 	Subject   string
 	Tags      core.BlobTags

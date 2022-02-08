@@ -27,8 +27,8 @@ var (
 	tagNameRegex, _     = regexp.Compile(`(^[a-zA-Z][a-zA-Z0-9_\-]{0,63}$)|$null`)
 	commonTagValidator  = CombineTagValidators(ValidateTagName, ValidateGenericTagValues)
 	systemTagValidator  = CombineTagValidators(commonTagValidator, ValidateOnlyOneTag)
-	ttlTagValidator     = CombineTagValidators(ValidateTimeToLive, systemTagValidator)
 	subjectTagValidator = CombineTagValidators(ValidateSubjectTagValue, systemTagValidator)
+	ttlTagValidator     = CombineTagValidators(ValidateTimeToLive, ValidateGenericTagValues)
 )
 
 type TagValidator func(tagName string, tagValues []string) error
@@ -143,8 +143,14 @@ func ValidateSubjectTagValue(tagName string, tagValues []string) error {
 func ValidateTimeToLive(tagName string, tagValues []string) error {
 
 	for _, t := range tagValues {
-		if _, err := time.ParseDuration(t); err != nil {
-			return err
+		duration, err := time.ParseDuration(t)
+
+		if err != nil {
+			return fmt.Errorf("%s: %s", tagName, err.Error())
+		}
+
+		if duration < 0*time.Second {
+			return fmt.Errorf("%s: time-to-live cannot be negative", tagName)
 		}
 	}
 
@@ -180,7 +186,7 @@ func ValidateAndStoreTag(tags *core.BlobTags, tagName string, tagValues []string
 		return ValidateAndStoreOptionalSystemTag(tagName, tagValues, &tags.Name, systemTagValidator)
 	case "session":
 		return ValidateAndStoreOptionalSystemTag(tagName, tagValues, &tags.Session, systemTagValidator)
-	case "ttl":
+	case "_ttl":
 		return ValidateAndStoreOptionalSystemTag(tagName, tagValues, &tags.TimeToLive, ttlTagValidator)
 	default:
 		if err := commonTagValidator(tagName, tagValues); err != nil {

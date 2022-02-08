@@ -57,8 +57,10 @@ func writeTagsAsHeaders(w http.ResponseWriter, blobInfo *core.BlobInfo) {
 	if blobInfo.Tags.ContentType == nil {
 		blobInfo.Tags.ContentType = pointer.String("application/octet-stream")
 	}
+	if blobInfo.ExpiresAt != nil {
+		w.Header().Add("Expires", blobInfo.ExpiresAt.Format(http.TimeFormat))
+	}
 	w.Header().Add("Content-Type", *blobInfo.Tags.ContentType)
-
 	w.Header().Add("Last-Modified", blobInfo.CreatedAt.Format(http.TimeFormat))
 
 	addSystemTagIfSet(w, "Device", blobInfo.Tags.Device)
