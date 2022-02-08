@@ -18,7 +18,7 @@ func (handler *Handler) SearchBlobs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results, ct, err := handler.db.SearchBlobMetadata(r.Context(), query, at, ct, pageSize)
+	results, ct, err := handler.db.SearchBlobMetadata(r.Context(), query, at, ct, pageSize, time.Now())
 
 	if err != nil {
 		if errors.Is(err, core.ErrInvalidContinuationToken) {
@@ -60,7 +60,7 @@ func (handler *Handler) GetLatestBlobData(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	results, _, err := handler.db.SearchBlobMetadata(r.Context(), query, at, nil, 1)
+	results, _, err := handler.db.SearchBlobMetadata(r.Context(), query, at, nil, 1, time.Now())
 
 	if err != nil {
 		log.Errorf("Failed to search blobs in DB: %v", err)

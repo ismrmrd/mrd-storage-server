@@ -29,7 +29,7 @@ func TestStorageWriteFailureRevertsStagedMetadata(t *testing.T) {
 		Return(nil, nil)
 
 	mockMetadataDatabase.EXPECT().
-		RevertStagedBlobMetadata(gomock.Any(), gomock.Any()).
+		DeleteBlobMetadata(gomock.Any(), gomock.Any()).
 		Return(nil)
 
 	mockBlobStore.EXPECT().

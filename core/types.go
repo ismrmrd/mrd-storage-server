@@ -29,13 +29,15 @@ type BlobTags struct {
 	Device      *string
 	Session     *string
 	ContentType *string
+	TimeToLive  *string
 	CustomTags  map[string][]string
 }
 
 type BlobInfo struct {
-	Key       BlobKey
-	CreatedAt time.Time
-	Tags      BlobTags
+	Key        BlobKey
+	Tags       BlobTags
+	CreatedAt  time.Time
+	ExpiresAt *time.Time
 }
 
 type ContinutationToken string
@@ -47,10 +49,10 @@ func UnixTimeMsToTime(timeValueMs int64) time.Time {
 type MetadataDatabase interface {
 	StageBlobMetadata(ctx context.Context, key BlobKey, tags *BlobTags) (*BlobInfo, error)
 	CompleteStagedBlobMetadata(ctx context.Context, key BlobKey) error
-	RevertStagedBlobMetadata(ctx context.Context, key BlobKey) error
-	GetPageOfExpiredStagedBlobMetadata(ctx context.Context, olderThan time.Time) ([]BlobKey, error)
-	GetBlobMetadata(ctx context.Context, key BlobKey) (*BlobInfo, error)
-	SearchBlobMetadata(ctx context.Context, tags map[string][]string, at *time.Time, ct *ContinutationToken, pageSize int) ([]BlobInfo, *ContinutationToken, error)
+	DeleteBlobMetadata(ctx context.Context, key BlobKey) error
+	GetPageOfExpiredBlobMetadata(ctx context.Context, olderThan time.Time) ([]BlobKey, error)
+	GetBlobMetadata(ctx context.Context, key BlobKey, expiresAfter time.Time) (*BlobInfo, error)
+	SearchBlobMetadata(ctx context.Context, tags map[string][]string, at *time.Time, ct *ContinutationToken, pageSize int, expiresAfter time.Time) ([]BlobInfo, *ContinutationToken, error)
 }
 
 type BlobStore interface {

@@ -21,10 +21,11 @@ import (
 )
 
 const (
-	schemaVersionLatest         = 1
+	schemaVersionInitial        = 1
+	schemaVersionAddExpiresAt   = 2
+	schemaVersionLatest         = schemaVersionAddExpiresAt
 	schemaVersionCompleteStatus = "complete"
 )
-
 type schemaVersion struct {
 	Version int `gorm:"primaryKey;not null"`
 	Status  string
@@ -38,6 +39,7 @@ type blobMetadata struct {
 	Session     sql.NullString `gorm:"size:64;"`
 	ContentType sql.NullString `gorm:"size:64;"`
 	CreatedAt   int64          `gorm:"autoCreateTime:milli;index:idx_blob_metadata_search,priority:4;index:staged,where:staged = true"`
+	ExpiresAt   sql.NullInt64  `gorm:"index:expires,where:expires_at is not null"`
 	Staged      bool
 	CustomTags  []customBlobMetadata `gorm:"foreignKey:BlobSubject,BlobId;references:Subject,Id;constraint:OnDelete:CASCADE"`
 }
@@ -132,6 +134,7 @@ func (r databaseRepository) StageBlobMetadata(ctx context.Context, key core.Blob
 		Name:        toNullString(tags.Name),
 		Session:     toNullString(tags.Session),
 		ContentType: toNullString(tags.ContentType),
+		ExpiresAt:   toExpiration(tags.TimeToLive),
 		Staged:      true,
 	}
 
@@ -166,24 +169,11 @@ func (r databaseRepository) StageBlobMetadata(ctx context.Context, key core.Blob
 		return nil, err
 	}
 
-	return &core.BlobInfo{Key: key, CreatedAt: core.UnixTimeMsToTime(metadata.CreatedAt), Tags: *tags}, nil
-}
-
-func (r databaseRepository) RevertStagedBlobMetadata(ctx context.Context, key core.BlobKey) error {
-	return r.db.WithContext(ctx).Transaction(
-		func(tx *gorm.DB) error {
-			res := tx.Where("subject = ? AND id = ? AND staged = ?", key.Subject, key.Id, true).
-				Delete(&blobMetadata{})
-			if res.Error != nil {
-				return res.Error
-			}
-			if res.RowsAffected == 0 {
-				return core.ErrStagedRecordNotFound
-			}
-
-			return tx.Where("blob_subject = ? AND blob_id = ?", key.Subject, key.Id).
-				Delete(&customBlobMetadata{}).Error
-		})
+	return &core.BlobInfo{
+		Key: key,
+		CreatedAt: core.UnixTimeMsToTime(metadata.CreatedAt),
+		ExpiresAt: ExpirationToTime(metadata.ExpiresAt),
+		Tags: *tags}, nil
 }
 
 func (r databaseRepository) CompleteStagedBlobMetadata(ctx context.Context, key core.BlobKey) error {
@@ -199,9 +189,13 @@ func (r databaseRepository) CompleteStagedBlobMetadata(ctx context.Context, key 
 	return nil
 }
 
-func (r databaseRepository) GetBlobMetadata(ctx context.Context, key core.BlobKey) (*core.BlobInfo, error) {
-	subquery := r.db.WithContext(ctx).Model(&blobMetadata{}).Where("subject = ? AND id = ?", key.Subject, key.Id)
-	blobs, err := r.readTagsFromMetadataSubquery(ctx, subquery)
+func (r databaseRepository) GetBlobMetadata(ctx context.Context, key core.BlobKey, expiresAfter time.Time) (*core.BlobInfo, error) {
+	query := r.db.WithContext(ctx).
+		Model(&blobMetadata{}).
+		Where("subject = ? AND id = ?", key.Subject, key.Id).
+		Where("expires_at > ? OR expires_at is null", expiresAfter.UnixMilli())
+
+	blobs, err := r.readTagsFromMetadataSubquery(ctx, query)
 
 	if err != nil {
 		return nil, err
@@ -214,30 +208,50 @@ func (r databaseRepository) GetBlobMetadata(ctx context.Context, key core.BlobKe
 	return &blobs[0], nil
 }
 
-func (r databaseRepository) SearchBlobMetadata(ctx context.Context, tags map[string][]string, at *time.Time, ct *core.ContinutationToken, pageSize int) ([]core.BlobInfo, *core.ContinutationToken, error) {
+func (r databaseRepository) DeleteBlobMetadata(ctx context.Context, key core.BlobKey) error {
+	return r.db.WithContext(ctx).Transaction(
+		func(tx *gorm.DB) error {
+			res := tx.
+				Where("subject = ? AND id = ?", key.Subject, key.Id).
+				Delete(&blobMetadata{})
+			if res.Error != nil {
+				return res.Error
+			}
+			if res.RowsAffected == 0 {
+				return core.ErrBlobNotFound
+			}
 
-	subquery := r.db.WithContext(ctx).Model(&blobMetadata{})
+			return tx.
+				Where("blob_subject = ? AND blob_id = ?", key.Subject, key.Id).
+				Delete(&customBlobMetadata{}).Error
+		})
+}
+
+func (r databaseRepository) SearchBlobMetadata(ctx context.Context, tags map[string][]string, at *time.Time, ct *core.ContinutationToken, pageSize int, expiresAfter time.Time) ([]core.BlobInfo, *core.ContinutationToken, error) {
+
+	query := r.db.WithContext(ctx).Model(&blobMetadata{})
 
 	for k, values := range tags {
 		switch k {
 		case "subject", "device", "name", "session":
 			for _, v := range values {
-				subquery = subquery.Where(fmt.Sprintf("%s = ?", k), v)
+				query = query.Where(fmt.Sprintf("%s = ?", k), v)
 			}
 
 		default:
 			for _, v := range values {
-				subquery = subquery.Where("EXISTS (SELECT * FROM custom_blob_metadata WHERE blob_id = id AND blob_subject = subject and tag_name = ? AND tag_value = ?)", k, v)
+				query = query.Where("EXISTS (SELECT * FROM custom_blob_metadata WHERE blob_id = id AND blob_subject = subject and tag_name = ? AND tag_value = ?)", k, v)
 			}
 		}
 	}
 
-	subquery = subquery.
+	query = query.
+		Where("expires_at > ? OR expires_at is null", expiresAfter.UnixMilli()).
 		Order("created_at DESC, id DESC").
 		Limit(pageSize + 1)
 
 	if at != nil {
-		subquery = subquery.Where("created_at <= ?", at.UnixMilli())
+		query = query.Where("created_at <= ?", at.UnixMilli())
 	}
 
 	if ct != nil {
@@ -247,13 +261,13 @@ func (r databaseRepository) SearchBlobMetadata(ctx context.Context, tags map[str
 		}
 
 		if c.Id == nil {
-			subquery = subquery.Where("created_at < ?", c.CreatedTimeMs)
+			query = query.Where("created_at < ?", c.CreatedTimeMs)
 		} else {
-			subquery = subquery.Where("created_at = ? AND id < ? OR created_at < ?", c.CreatedTimeMs, c.Id, c.CreatedTimeMs)
+			query = query.Where("created_at = ? AND id < ? OR created_at < ?", c.CreatedTimeMs, c.Id, c.CreatedTimeMs)
 		}
 	}
 
-	results, err := r.readTagsFromMetadataSubquery(ctx, subquery)
+	results, err := r.readTagsFromMetadataSubquery(ctx, query)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -280,12 +294,13 @@ func (r databaseRepository) SearchBlobMetadata(ctx context.Context, tags map[str
 	return results, nil, nil
 }
 
-func (r databaseRepository) GetPageOfExpiredStagedBlobMetadata(ctx context.Context, olderThan time.Time) ([]core.BlobKey, error) {
+func (r databaseRepository) GetPageOfExpiredBlobMetadata(ctx context.Context, olderThan time.Time) ([]core.BlobKey, error) {
+
 	rows, err := r.db.
 		Model(blobMetadata{}).
 		Select(`subject, id`).
 		Where(`staged = ? AND created_at < ?`, true, olderThan.UnixMilli()).
-		Order("created_at ASC").
+		Or(`expires_at < ?`, olderThan.UnixMilli()).
 		Limit(200).
 		Rows()
 
@@ -306,7 +321,6 @@ func (r databaseRepository) GetPageOfExpiredStagedBlobMetadata(ctx context.Conte
 		keys = append(keys, key)
 	}
 
-	// with the reader closed and the locks released, yield the results
 	return keys, nil
 }
 
@@ -335,6 +349,7 @@ func (r databaseRepository) readTagsFromMetadataSubquery(ctx context.Context, su
 				md.session,
 				md.content_type,
 				md.created_at,
+				md.expires_at,
 				custom_blob_metadata.tag_name,
 				custom_blob_metadata.tag_value`).
 		Joins(`LEFT JOIN custom_blob_metadata
@@ -359,6 +374,7 @@ func (r databaseRepository) readTagsFromMetadataSubquery(ctx context.Context, su
 		var customTagValue sql.NullString
 
 		var timeValueMs int64
+		var expirationValueMs sql.NullInt64
 
 		err = rows.Scan(
 			&tmpBlobInfo.Key.Subject,
@@ -368,6 +384,7 @@ func (r databaseRepository) readTagsFromMetadataSubquery(ctx context.Context, su
 			&tmpBlobInfo.Tags.Session,
 			&tmpBlobInfo.Tags.ContentType,
 			&timeValueMs,
+			&expirationValueMs,
 			&customTagName,
 			&customTagValue)
 
@@ -376,6 +393,7 @@ func (r databaseRepository) readTagsFromMetadataSubquery(ctx context.Context, su
 		}
 
 		tmpBlobInfo.CreatedAt = core.UnixTimeMsToTime(timeValueMs)
+		tmpBlobInfo.ExpiresAt = ExpirationToTime(expirationValueMs)
 
 		if currentBlobInfo == nil || currentBlobInfo.Key.Id != tmpBlobInfo.Key.Id {
 			results = append(results, tmpBlobInfo)
@@ -397,3 +415,27 @@ func toNullString(stringPointer *string) sql.NullString {
 
 	return sql.NullString{String: *stringPointer, Valid: true}
 }
+
+func toExpiration(stringPointer *string) sql.NullInt64 {
+
+	if stringPointer == nil {
+		return sql.NullInt64{}
+	}
+
+	dur, err := time.ParseDuration(*stringPointer)
+	if err != nil {
+		return sql.NullInt64{}
+	}
+
+	return sql.NullInt64{Int64: time.Now().Add(dur).UnixMilli(), Valid: true}
+}
+
+func ExpirationToTime(expiration sql.NullInt64) *time.Time {
+	if !expiration.Valid {
+		return nil
+	}
+
+	value := core.UnixTimeMsToTime(expiration.Int64)
+	return &value
+}
+

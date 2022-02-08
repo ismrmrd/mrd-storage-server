@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/ismrmrd/mrd-storage-server/core"
@@ -12,7 +13,7 @@ import (
 
 type Responder func(http.ResponseWriter, *http.Request, *core.BlobInfo)
 
-func (handler *Handler) MakeBlobEndpoint(responder Responder) http.HandlerFunc {
+func (handler *Handler) MakeBlobEndpoint(responder Responder, grace time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		combinedId := chi.URLParam(r, "combined-id")
@@ -22,7 +23,7 @@ func (handler *Handler) MakeBlobEndpoint(responder Responder) http.HandlerFunc {
 			return
 		}
 
-		blobInfo, err := handler.db.GetBlobMetadata(r.Context(), key)
+		blobInfo, err := handler.db.GetBlobMetadata(r.Context(), key, time.Now().Add(-grace))
 		if err != nil {
 			if errors.Is(err, core.ErrRecordNotFound) {
 				w.WriteHeader(http.StatusNotFound)
@@ -56,8 +57,10 @@ func writeTagsAsHeaders(w http.ResponseWriter, blobInfo *core.BlobInfo) {
 	if blobInfo.Tags.ContentType == nil {
 		blobInfo.Tags.ContentType = pointer.String("application/octet-stream")
 	}
+	if blobInfo.ExpiresAt != nil {
+		w.Header().Add("Expires", blobInfo.ExpiresAt.Format(http.TimeFormat))
+	}
 	w.Header().Add("Content-Type", *blobInfo.Tags.ContentType)
-
 	w.Header().Add("Last-Modified", blobInfo.CreatedAt.Format(http.TimeFormat))
 
 	addSystemTagIfSet(w, "Device", blobInfo.Tags.Device)

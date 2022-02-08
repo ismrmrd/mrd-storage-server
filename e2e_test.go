@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	gourl "net/url"
@@ -96,6 +97,8 @@ func TestInvalidTags(t *testing.T) {
 		{"tag name that is too long", fmt.Sprintf("subject=sub&%s=abc", strings.Repeat("a", 65))},
 		{"Location", "subject=s&location=l"},
 		{"Last-Modified", "subject=s&lastModified=2021-10-18T16:56:15.693Z"},
+		{"bad ttl", "subject=s&_ttl=not-an-interval"},
+		{"negative ttl", "subject=s&_ttl=-1h"},
 		{"Many Subject tags", "subject=s&subject=s2"},
 		{"Subject empty", "subject="},
 		{"No subject tag", ""},
@@ -182,6 +185,121 @@ func TestCreateValidBlobCustomTags(t *testing.T) {
 	assert.Len(t, searchResp.Results.Items, 1)
 }
 
+func TestCreateValidBlobTimeToLive(t *testing.T) {
+
+	body := "This is a body."
+	subject := fmt.Sprint(time.Now().UnixNano())
+	ttl := "10m9s" // 10 minutes, 9 seconds
+	now := time.Now()
+
+	response := create(
+		t,
+		fmt.Sprintf("subject=%s&session=mysession&_ttl=%s", subject, ttl),
+		"text/plain",
+		body)
+
+	require.Equal(t, http.StatusCreated, response.StatusCode)
+	assert.Equal(t, subject, response.Meta["subject"])
+	assert.Equal(t, "mysession", response.Meta["session"])
+	require.NotNil(t, response.Meta["expires"])
+	assert.Regexp(t, "Z$", response.Meta["expires"], "Expiration datetime in response not in UTC")
+
+	duration, _ := time.ParseDuration(ttl)
+	expected := now.Add(duration)
+
+	// Check that the expiration is approximately 10 minutes, 9 seconds in the future.
+	expires, err := time.Parse(time.RFC3339Nano, response.Meta["expires"].(string))
+	require.Nil(t, err)
+
+	almostEqual := func(a time.Time, b time.Time) bool {
+		return math.Abs(a.Sub(b).Seconds()) < 500e-3
+	}
+
+	require.True(t, almostEqual(expected, expires))
+}
+
+func TestExpiredBlobNotInSearchResults(t *testing.T) {
+
+	body := "An expired blob should not be displayed in search results."
+	subject := fmt.Sprint(time.Now().UnixNano())
+
+	for _, ttl := range []string{"0s", "10m", "10m"} {
+		response := create(
+			t,
+			fmt.Sprintf("subject=%s&session=expiration-search-test&_ttl=%s&expiration-test=%s", subject, ttl, ttl),
+			"text/plain",
+			body)
+		require.Equal(t, http.StatusCreated, response.StatusCode)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+
+	response := search(t, fmt.Sprintf("subject=%s&session=expiration-search-test", subject))
+
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.Equal(t, 2, len(response.Results.Items))
+
+	for _, item := range response.Results.Items {
+		require.Equal(t, "10m", item["expiration-test"].(string))
+	}
+}
+
+func TestExpiredBlobNotFound(t *testing.T) {
+
+	body := "Getting an expired blob directly should return 404"
+	subject := fmt.Sprint(time.Now().UnixNano())
+
+	response := create(
+		t,
+		fmt.Sprintf("subject=%s&session=expiration-lookup-test&_ttl=0s", subject),
+		"text/plain",
+		body)
+
+	require.Equal(t, http.StatusCreated, response.StatusCode)
+	require.Contains(t, response.Meta, "expires")
+
+	time.Sleep(50 * time.Millisecond)
+
+	response = get(t, response.Location)
+
+	require.Equal(t, http.StatusNotFound, response.StatusCode)
+}
+
+func TestBlobCreatedWithTimeToLiveHasExpiration(t *testing.T) {
+
+	body := "This is a body. It will do nicely."
+	subject := fmt.Sprint(time.Now().UnixNano())
+	ttl := "45m"
+
+	createResponse := create(
+		t,
+		fmt.Sprintf("subject=%s&session=mysession&_ttl=%s", subject, ttl),
+		"text/plain",
+		body)
+	require.Equal(t, http.StatusCreated, createResponse.StatusCode)
+
+	readResponse := get(t, createResponse.Location)
+	require.Equal(t, http.StatusOK, readResponse.StatusCode)
+	require.NotNil(t, readResponse.Meta["expires"])
+	require.Equal(t, createResponse.Meta["expires"], readResponse.Meta["expires"])
+}
+
+func TestBlobCreateWithTimeToLiveHasExpirationDataHeader(t *testing.T) {
+	body := "This is a body. Just bytes really."
+	subject := fmt.Sprint(time.Now().UnixNano())
+	ttl := "5m"
+
+	createResponse := create(
+		t,
+		fmt.Sprintf("subject=%s&session=mysession&_ttl=%s", subject, ttl),
+		"text/plain",
+		body)
+	require.Equal(t, http.StatusCreated, createResponse.StatusCode)
+
+	data := read(t, createResponse.Data)
+	require.NotNil(t, data.ExpiresAt)
+}
+
 func TestCreateResponse(t *testing.T) {
 
 	body := "these are some bytes"
@@ -226,13 +344,8 @@ func TestCreateResponseMatchesBlobMeta(t *testing.T) {
 	createResponse := create(t, fmt.Sprintf("subject=%s&session=mysession", subject), "text/plain", body)
 	require.Equal(t, http.StatusCreated, createResponse.StatusCode)
 
-	location, err := gourl.Parse(createResponse.Location)
-	require.Nil(t, err)
+	readResponse := get(t, createResponse.Location)
 
-	resp, err := executeRequest("GET", location.Path, nil, nil)
-	require.Nil(t, err)
-
-	readResponse := createMetaResponse(resp)
 	require.Equal(t, http.StatusOK, readResponse.StatusCode)
 	require.True(t, reflect.DeepEqual(createResponse.Meta, readResponse.Meta))
 }
@@ -417,6 +530,17 @@ func read(t *testing.T, url string) ReadResponse {
 	return populateBlobResponse(t, resp)
 }
 
+func get(t *testing.T, location string) MetaResponse {
+
+	url, err := gourl.Parse(location)
+	require.Nil(t, err)
+
+	resp, err := executeRequest("GET", url.Path, nil, nil)
+	require.Nil(t, err)
+
+	return createMetaResponse(resp)
+}
+
 func createMetaResponse(resp *http.Response) MetaResponse {
 	response := MetaResponse{}
 	response.RawResponse = resp
@@ -481,6 +605,13 @@ func populateBlobResponse(t *testing.T, resp *http.Response) ReadResponse {
 		t, _ := time.Parse(http.TimeFormat, lastModified[0])
 		readResponse.CreatedAt = &t
 		delete(headers, "Last-Modified")
+	}
+
+	if expiresAt, ok := headers["Expires"]; ok {
+		assert.Len(t, expiresAt, 1)
+		t, _ := time.Parse(http.TimeFormat, expiresAt[0])
+		readResponse.ExpiresAt = &t
+		delete(headers, "Expires")
 	}
 
 	reflectionTags := reflect.ValueOf(&readResponse.Tags).Elem()
@@ -559,7 +690,8 @@ func TestGarbageCollection(t *testing.T) {
 	for _, key := range keys {
 		_, err := db.StageBlobMetadata(context.Background(), key, &core.BlobTags{})
 		require.Nil(t, err)
-		blobStore.SaveBlob(context.Background(), http.NoBody, key)
+		err = blobStore.SaveBlob(context.Background(), http.NoBody, key)
+		require.Nil(t, err)
 	}
 
 	olderThan := time.Now().Add(time.Minute).UTC()
@@ -572,6 +704,42 @@ func TestGarbageCollection(t *testing.T) {
 		assert.ErrorIs(t, err, core.ErrBlobNotFound)
 		assert.Nil(t, blobStore.DeleteBlob(context.Background(), key))
 	}
+}
+
+func TestGarbageCollectionRemovesExpiredBlobs(t *testing.T) {
+
+	if remoteUrl != nil {
+		// this test only works in-proc
+		return
+	}
+
+	ttl := "5m"
+	body := "This is a body."
+	session := "time-to-live-test"
+	subject := fmt.Sprint(time.Now().UnixNano())
+
+	createResponse := create(
+		t,
+		fmt.Sprintf("subject=%s&session=%s&_ttl=%s", subject, session, ttl),
+		"text/plain",
+		body)
+	require.Equal(t, http.StatusCreated, createResponse.StatusCode)
+
+	olderThan := time.Now().Add(time.Hour).UTC()
+	err := core.CollectGarbage(context.Background(), db, blobStore, olderThan)
+	require.Nil(t, err)
+
+	// GC should have deleted the blob; search should now be empty.
+	searchResponse := search(t, fmt.Sprintf("subject=%s&session=%s", subject, session))
+	require.Equal(t, http.StatusOK, searchResponse.StatusCode)
+	require.Empty(t, searchResponse.Results.Items)
+
+	// Getting the blob directly should result in a 404
+	metaResponse := get(t, createResponse.Location)
+	require.Equal(t, http.StatusNotFound, metaResponse.StatusCode)
+
+	dataResponse := read(t, createResponse.Data)
+	require.Equal(t, http.StatusNotFound, dataResponse.StatusCode)
 }
 
 func TestStagedBlobsAreNotVisible(t *testing.T) {
@@ -633,6 +801,7 @@ type MetaResponse struct {
 type ReadResponse struct {
 	Response
 	CreatedAt *time.Time
+	ExpiresAt *time.Time
 	Body      string
 	Subject   string
 	Tags      core.BlobTags
