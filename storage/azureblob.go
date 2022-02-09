@@ -5,11 +5,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"io"
-	"net/url"
 	"path"
-	"strings"
 
-	"github.com/Azure/azure-storage-blob-go/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/ismrmrd/mrd-storage-server/core"
 )
 
@@ -18,74 +16,53 @@ var (
 )
 
 type azureBlobStore struct {
-	containerUrl azblob.ContainerURL
+	containerClient azblob.ContainerClient
 }
 
 func NewAzureBlobStore(connectionString string) (core.BlobStore, error) {
-	connectionStringProperties := make(map[string]string)
-	for _, p := range strings.Split(connectionString, ";") {
-		if p == "" {
-			continue
-		}
-		tokens := strings.SplitN(p, "=", 2)
-		if len(tokens) != 2 {
-			return nil, ErrInvalidConnectionString
-		}
 
-		connectionStringProperties[tokens[0]] = tokens[1]
-	}
-
-	credential, err := azblob.NewSharedKeyCredential(connectionStringProperties["AccountName"], connectionStringProperties["AccountKey"])
+	serviceClient, err := azblob.NewServiceClientFromConnectionString(connectionString, nil)
 	if err != nil {
-		return nil, ErrInvalidConnectionString
+		return nil, err
 	}
-
-	pipeline := azblob.NewPipeline(credential, azblob.PipelineOptions{})
-	endpoint, err := url.Parse(connectionStringProperties["BlobEndpoint"])
-	if endpoint == nil || err != nil {
-		return nil, ErrInvalidConnectionString
-	}
-
-	serviceUrl := azblob.NewServiceURL(*endpoint, pipeline)
-
-	containerUrl := serviceUrl.NewContainerURL("mrd-storage-server")
-	_, err = containerUrl.Create(context.Background(), azblob.Metadata{}, azblob.PublicAccessNone)
-	if err != nil {
-		if storageErr, ok := err.(azblob.StorageError); !ok || storageErr.ServiceCode() != azblob.ServiceCodeContainerAlreadyExists {
+	containerClient := serviceClient.NewContainerClient("mrd-storage-server")
+	if _, err := containerClient.Create(context.Background(), nil); err != nil {
+		var storageError *azblob.StorageError
+		if !errors.As(err, &storageError) || storageError.ErrorCode != azblob.StorageErrorCodeContainerAlreadyExists {
 			return nil, err
 		}
 	}
 
-	return &azureBlobStore{containerUrl: containerUrl}, nil
+	return &azureBlobStore{containerClient: containerClient}, nil
 }
 
 func (s *azureBlobStore) SaveBlob(ctx context.Context, contents io.Reader, key core.BlobKey) error {
-	blobUrl := s.containerUrl.NewBlockBlobURL(blobName(key))
-	_, err := azblob.UploadStreamToBlockBlob(context.Background(), contents, blobUrl, azblob.UploadStreamToBlockBlobOptions{})
+	blobClient := s.containerClient.NewBlockBlobClient(blobName(key))
+	_, err := blobClient.UploadStreamToBlockBlob(ctx, contents, azblob.UploadStreamToBlockBlobOptions{})
 	return err
 }
 
 func (s *azureBlobStore) ReadBlob(ctx context.Context, writer io.Writer, key core.BlobKey) error {
-	blobUrl := s.containerUrl.NewBlockBlobURL(blobName(key))
-	downloadResponse, err := blobUrl.Download(ctx, 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false, azblob.ClientProvidedKeyOptions{})
+	blobClient := s.containerClient.NewBlockBlobClient(blobName(key))
+	resp, err := blobClient.Download(ctx, &azblob.DownloadBlobOptions{})
 	if err != nil {
-		if storageErr, ok := err.(azblob.StorageError); ok && storageErr.ServiceCode() == azblob.ServiceCodeBlobNotFound {
+		var storageError *azblob.StorageError
+		if errors.As(err, &storageError) && storageError.ErrorCode == azblob.StorageErrorCodeBlobNotFound {
 			return core.ErrBlobNotFound
-		} else {
-			return err
 		}
-	}
 
-	bodyStream := downloadResponse.Body(azblob.RetryReaderOptions{MaxRetryRequests: 20})
-	_, err = io.Copy(writer, bodyStream)
+		return err
+	}
+	reader := resp.Body(&azblob.RetryReaderOptions{MaxRetryRequests: 20})
+	_, err = io.Copy(writer, reader)
 	return err
 }
 
 func (s *azureBlobStore) DeleteBlob(ctx context.Context, key core.BlobKey) error {
-	blobUrl := s.containerUrl.NewBlockBlobURL(blobName(key))
-
-	if _, err := blobUrl.Delete(ctx, azblob.DeleteSnapshotsOptionNone, azblob.BlobAccessConditions{}); err != nil {
-		if storageErr, ok := err.(azblob.StorageError); !ok || storageErr.ServiceCode() != azblob.ServiceCodeBlobNotFound {
+	blobClient := s.containerClient.NewBlockBlobClient(blobName(key))
+	if _, err := blobClient.Delete(ctx, &azblob.DeleteBlobOptions{}); err != nil {
+		var storageError *azblob.StorageError
+		if !errors.As(err, &storageError) || storageError.ErrorCode != azblob.StorageErrorCodeBlobNotFound {
 			return err
 		}
 	}
