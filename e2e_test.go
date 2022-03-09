@@ -488,6 +488,12 @@ func TestNullSubject(t *testing.T) {
 	assert.Equal(t, "hello", latestResp.Body)
 }
 
+func TestHealthCheck(t *testing.T) {
+	resp, err := executeRequest("GET", "/healthcheck", nil, nil)
+	require.Nil(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
 func search(t *testing.T, queryString string) SearchResponse {
 	resp, err := executeRequest("GET", fmt.Sprintf("/v1/blobs?%s", queryString), nil, nil)
 	require.Nil(t, err)
