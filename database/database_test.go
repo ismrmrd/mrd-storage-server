@@ -74,7 +74,7 @@ func TestExpiredMetadataIsInvisible(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, blobInfo)
 
-	blobInfo, err  = db.GetBlobMetadata(context.Background(), key, time.Now().Add(10 * time.Minute))
+	blobInfo, err = db.GetBlobMetadata(context.Background(), key, time.Now().Add(10*time.Minute))
 	require.Nil(t, blobInfo)
 	require.True(t, errors.Is(err, core.ErrRecordNotFound))
 }
