@@ -36,6 +36,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/johnstairs/pathenvconfig v0.2.0
+	github.com/mpalmer/gorm-zerolog v0.1.0
 	github.com/rs/zerolog v1.26.1
 	github.com/stretchr/testify v1.7.0
 )

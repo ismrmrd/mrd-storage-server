@@ -14,12 +14,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ismrmrd/mrd-storage-server/core"
+	gormzerolog "github.com/mpalmer/gorm-zerolog"
 	"github.com/rs/zerolog/log"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"gorm.io/gorm/logger"
 )
 
 const (
@@ -87,7 +87,7 @@ func ConnectPostgresqlDatabase(connectionString, password string) (core.Metadata
 
 func createRepository(dialector gorm.Dialector) (core.MetadataDatabase, error) {
 	db, err := gorm.Open(dialector, &gorm.Config{
-		Logger:                 logger.Default.LogMode(logger.Warn),
+		Logger:                 gormzerolog.Logger{},
 		SkipDefaultTransaction: true,
 		NowFunc: func() time.Time {
 			return time.Now().UTC()
