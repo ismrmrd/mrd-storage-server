@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/ismrmrd/mrd-storage-server/core"
+	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -26,6 +28,7 @@ const (
 	schemaVersionLatest         = schemaVersionAddExpiresAt
 	schemaVersionCompleteStatus = "complete"
 )
+
 type schemaVersion struct {
 	Version int `gorm:"primaryKey;not null"`
 	Status  string
@@ -170,10 +173,10 @@ func (r databaseRepository) StageBlobMetadata(ctx context.Context, key core.Blob
 	}
 
 	return &core.BlobInfo{
-		Key: key,
+		Key:       key,
 		CreatedAt: core.UnixTimeMsToTime(metadata.CreatedAt),
 		ExpiresAt: ExpirationToTime(metadata.ExpiresAt),
-		Tags: *tags}, nil
+		Tags:      *tags}, nil
 }
 
 func (r databaseRepository) CompleteStagedBlobMetadata(ctx context.Context, key core.BlobKey) error {
@@ -408,6 +411,16 @@ func (r databaseRepository) readTagsFromMetadataSubquery(ctx context.Context, su
 	return results, nil
 }
 
+func (r databaseRepository) HealthCheck(ctx context.Context) error {
+	s := r.db.WithContext(ctx).Exec("SELECT NULL from blob_metadata LIMIT 1")
+	err := s.Error
+	if err != nil {
+		log.Errorf("database health check failed: %v", err)
+		return errors.New("failed to connect to database")
+	}
+	return nil
+}
+
 func toNullString(stringPointer *string) sql.NullString {
 	if stringPointer == nil {
 		return sql.NullString{}
@@ -438,4 +451,3 @@ func ExpirationToTime(expiration sql.NullInt64) *time.Time {
 	value := core.UnixTimeMsToTime(expiration.Int64)
 	return &value
 }
-

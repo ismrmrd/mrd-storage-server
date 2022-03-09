@@ -12,6 +12,7 @@ import (
 	"path"
 
 	"github.com/ismrmrd/mrd-storage-server/core"
+	log "github.com/sirupsen/logrus"
 )
 
 type fileSystemStore struct {
@@ -69,6 +70,15 @@ func (s fileSystemStore) DeleteBlob(ctx context.Context, key core.BlobKey) error
 		return err
 	}
 
+	return nil
+}
+
+func (s fileSystemStore) HealthCheck(ctx context.Context) error {
+	_, err := os.Stat(s.rootDir)
+	if err != nil {
+		log.Errorf("filesystem health check failed: %v", err)
+		return errors.New("error accessing storage")
+	}
 	return nil
 }
 

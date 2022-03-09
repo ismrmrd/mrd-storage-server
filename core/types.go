@@ -34,9 +34,9 @@ type BlobTags struct {
 }
 
 type BlobInfo struct {
-	Key        BlobKey
-	Tags       BlobTags
-	CreatedAt  time.Time
+	Key       BlobKey
+	Tags      BlobTags
+	CreatedAt time.Time
 	ExpiresAt *time.Time
 }
 
@@ -53,10 +53,12 @@ type MetadataDatabase interface {
 	GetPageOfExpiredBlobMetadata(ctx context.Context, olderThan time.Time) ([]BlobKey, error)
 	GetBlobMetadata(ctx context.Context, key BlobKey, expiresAfter time.Time) (*BlobInfo, error)
 	SearchBlobMetadata(ctx context.Context, tags map[string][]string, at *time.Time, ct *ContinutationToken, pageSize int, expiresAfter time.Time) ([]BlobInfo, *ContinutationToken, error)
+	HealthCheck(ctx context.Context) error
 }
 
 type BlobStore interface {
 	SaveBlob(ctx context.Context, contents io.Reader, key BlobKey) error
 	ReadBlob(ctx context.Context, writer io.Writer, key BlobKey) error
 	DeleteBlob(ctx context.Context, key BlobKey) error
+	HealthCheck(ctx context.Context) error
 }

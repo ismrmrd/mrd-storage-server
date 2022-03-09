@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/etherlabsio/healthcheck"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
@@ -44,10 +45,15 @@ func BuildRouter(db core.MetadataDatabase, store core.BlobStore, logRequests boo
 			r.Post("/data", handler.CreateBlob)
 			r.Get("/", handler.SearchBlobs)
 			r.Get("/data/latest", handler.GetLatestBlobData)
-			r.Get("/{combined-id}", handler.MakeBlobEndpoint(handler.BlobMetadataResponse, 0 * time.Second))
-			r.Get("/{combined-id}/data", handler.MakeBlobEndpoint(handler.BlobDataResponse, 30 * time.Minute))
+			r.Get("/{combined-id}", handler.MakeBlobEndpoint(handler.BlobMetadataResponse, 0*time.Second))
+			r.Get("/{combined-id}/data", handler.MakeBlobEndpoint(handler.BlobDataResponse, 30*time.Minute))
 		})
 	})
+
+	r.Handle("/healthcheck", healthcheck.Handler(
+		healthcheck.WithChecker("database", healthcheck.CheckerFunc(db.HealthCheck)),
+		healthcheck.WithChecker("blobStore", healthcheck.CheckerFunc(store.HealthCheck)),
+	))
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
