@@ -3,12 +3,13 @@ package api
 import (
 	"errors"
 	"fmt"
-	"github.com/gofrs/uuid"
-	"github.com/ismrmrd/mrd-storage-server/core"
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"regexp"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/ismrmrd/mrd-storage-server/core"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -35,11 +36,7 @@ type TagValidator func(tagName string, tagValues []string) error
 
 func (handler *Handler) CreateBlob(w http.ResponseWriter, r *http.Request) {
 
-	id, err := uuid.NewV4()
-	if err != nil {
-		log.Panic(err)
-	}
-
+	id := uuid.New()
 	key := core.BlobKey{Id: id}
 
 	query := normalizeQueryMapToLowercaseKeys(r.URL.Query())
@@ -74,24 +71,24 @@ func (handler *Handler) CreateBlob(w http.ResponseWriter, r *http.Request) {
 
 	blobInfo, err := handler.db.StageBlobMetadata(r.Context(), key, &tags)
 	if err != nil {
-		log.Errorf("Failed to stage blob metadata: %v", err)
+		log.Ctx(r.Context()).Error().Msgf("Failed to stage blob metadata: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	if err := handler.store.SaveBlob(r.Context(), r.Body, key); err != nil {
-		log.Errorf("Failed to save blob: %v", err)
+		log.Ctx(r.Context()).Error().Msgf("Failed to save blob: %v", err)
 
 		err = handler.db.DeleteBlobMetadata(r.Context(), key)
 		if err != nil {
-			log.Errorf("Failed to revert staged blob metadata: %v", err)
+			log.Ctx(r.Context()).Error().Msgf("Failed to revert staged blob metadata: %v", err)
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	if err := handler.db.CompleteStagedBlobMetadata(r.Context(), key); err != nil {
-		log.Errorf("Failed to complete staged metadata to database: %v", err)
+		log.Ctx(r.Context()).Error().Msgf("Failed to complete staged metadata to database: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

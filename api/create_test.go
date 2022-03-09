@@ -2,13 +2,13 @@ package api
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/golang/mock/gomock"
@@ -16,7 +16,7 @@ import (
 )
 
 func init() {
-	log.SetOutput(ioutil.Discard)
+	log.Logger = log.Output(io.Discard)
 }
 
 func TestStorageWriteFailureRevertsStagedMetadata(t *testing.T) {

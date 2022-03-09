@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	"github.com/ismrmrd/mrd-storage-server/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,8 +17,7 @@ import (
 func TestErrorWhenStageBlobMetadataForgotten(t *testing.T) {
 	db, err := OpenSqliteDatabase(path.Join(t.TempDir(), "x.db"))
 	require.Nil(t, err)
-	id, err := uuid.NewV4()
-	require.Nil(t, err)
+	id := uuid.New()
 	key := core.BlobKey{Subject: "a", Id: id}
 
 	err = db.DeleteBlobMetadata(context.Background(), key)
@@ -32,7 +31,7 @@ func TestErrorWhenStageBlobMetadataForgotten(t *testing.T) {
 func TestStagedBlobMetadataCleanedUpOnRevert(t *testing.T) {
 	db, err := OpenSqliteDatabase(path.Join(t.TempDir(), "x.db"))
 	require.Nil(t, err)
-	id, err := uuid.NewV4()
+	id := uuid.New()
 	require.Nil(t, err)
 	key := core.BlobKey{Subject: "a", Id: id}
 
@@ -58,7 +57,7 @@ func TestExpiredMetadataIsInvisible(t *testing.T) {
 	db, err := OpenSqliteDatabase(path.Join(t.TempDir(), "x.db"))
 	require.Nil(t, err)
 
-	id, err := uuid.NewV4()
+	id := uuid.New()
 	require.Nil(t, err)
 	key := core.BlobKey{Subject: "blob-expiration-subject", Id: id}
 

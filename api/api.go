@@ -14,9 +14,10 @@ import (
 	"github.com/etherlabsio/healthcheck"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	"github.com/ismrmrd/mrd-storage-server/core"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 // use a dedicated type to avoid context key collisions
@@ -33,9 +34,9 @@ func BuildRouter(db core.MetadataDatabase, store core.BlobStore, logRequests boo
 	handler := Handler{db: db, store: store}
 	r := chi.NewRouter()
 
-	r.Use(middleware.RequestID)
+	r.Use(createRequestIdMiddleware)
 	if logRequests {
-		r.Use(middleware.Logger)
+		r.Use(createLoggerMiddleware(log.Logger))
 	}
 	r.Use(middleware.Recoverer)
 
@@ -73,6 +74,27 @@ func createApiVersionMiddleware(apiVersion string) func(next http.Handler) http.
 	}
 }
 
+func createLoggerMiddleware(logger zerolog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(rw http.ResponseWriter, r *http.Request) {
+			ww := middleware.NewWrapResponseWriter(rw, r.ProtoMajor)
+			start := time.Now().UTC()
+			defer func() {
+				log.Ctx(r.Context()).Info().
+					Int("status", ww.Status()).
+					Str("method", r.Method).
+					Str("path", r.URL.Path).
+					Str("query", r.URL.RawQuery).
+					Float32("latencyMs", float32(time.Since(start).Microseconds())/1000.0).
+					Msg("request completed")
+			}()
+
+			next.ServeHTTP(ww, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
 func TagHeaderName(tagName string) string {
 	return TagHeaderPrefix + tagName
 }
@@ -107,7 +129,7 @@ func getBlobCombinedId(key core.BlobKey) string {
 
 func getBlobSubjectAndIdFromCombinedId(combinedId string) (key core.BlobKey, ok bool) {
 	if len(combinedId) >= 37 {
-		id, err := uuid.FromString(combinedId[:36])
+		id, err := uuid.Parse(combinedId[:36])
 		if err == nil {
 			key.Id = id
 			key.Subject = combinedId[37:]

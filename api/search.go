@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/ismrmrd/mrd-storage-server/core"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 func (handler *Handler) SearchBlobs(w http.ResponseWriter, r *http.Request) {
@@ -27,7 +27,7 @@ func (handler *Handler) SearchBlobs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		log.Errorf("Failed to search blobs in DB: %v", err)
+		log.Ctx(r.Context()).Error().Msgf("Failed to search blobs in DB: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -63,7 +63,7 @@ func (handler *Handler) GetLatestBlobData(w http.ResponseWriter, r *http.Request
 	results, _, err := handler.db.SearchBlobMetadata(r.Context(), query, at, nil, 1, time.Now())
 
 	if err != nil {
-		log.Errorf("Failed to search blobs in DB: %v", err)
+		log.Ctx(r.Context()).Error().Msgf("Failed to search blobs in DB: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

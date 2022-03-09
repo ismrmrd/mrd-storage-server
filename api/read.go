@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/ismrmrd/mrd-storage-server/core"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"github.com/xorcare/pointer"
 )
 
@@ -30,7 +30,7 @@ func (handler *Handler) MakeBlobEndpoint(responder Responder, grace time.Duratio
 				return
 			}
 
-			log.Errorf("Database read failed: %v", err)
+			log.Ctx(r.Context()).Error().Msgf("Database read failed: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -48,7 +48,7 @@ func (handler *Handler) BlobDataResponse(w http.ResponseWriter, r *http.Request,
 	writeTagsAsHeaders(w, blobInfo)
 
 	if err := handler.store.ReadBlob(r.Context(), w, blobInfo.Key); err != nil {
-		log.Errorf("Failed to read blob from storage: %v", err)
+		log.Ctx(r.Context()).Error().Msgf("Failed to read blob from storage: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
