@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -47,7 +48,14 @@ func main() {
 	handler := assembleHandler(db, blobStore, config)
 
 	go garbageCollectionLoop(context.Background(), db, blobStore)
-	err = http.ListenAndServe(fmt.Sprintf(":%d", config.Port), handler)
+
+	l, err := net.Listen("tcp", fmt.Sprintf(":%d", config.Port))
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+
+	log.Info().Msgf("Listening on port %d", config.Port)
+	err = http.Serve(l, handler)
 	log.Fatal().Err(err).Send()
 }
 
