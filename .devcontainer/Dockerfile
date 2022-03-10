@@ -7,6 +7,7 @@ FROM mcr.microsoft.com/vscode/devcontainers/go:0-${VARIANT}
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends sqlite3
 
-USER vscode
 ARG MOCKGEN_VERSION="v1.6.0"
 RUN go install github.com/golang/mock/mockgen@${MOCKGEN_VERSION}
+
+RUN chmod -R g+w /go
