@@ -12,14 +12,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	"github.com/ismrmrd/mrd-storage-server/core"
-	log "github.com/sirupsen/logrus"
+	gormzerolog "github.com/mpalmer/gorm-zerolog"
+	"github.com/rs/zerolog/log"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"gorm.io/gorm/logger"
 )
 
 const (
@@ -87,7 +87,7 @@ func ConnectPostgresqlDatabase(connectionString, password string) (core.Metadata
 
 func createRepository(dialector gorm.Dialector) (core.MetadataDatabase, error) {
 	db, err := gorm.Open(dialector, &gorm.Config{
-		Logger:                 logger.Default.LogMode(logger.Warn),
+		Logger:                 gormzerolog.Logger{},
 		SkipDefaultTransaction: true,
 		NowFunc: func() time.Time {
 			return time.Now().UTC()
@@ -415,7 +415,7 @@ func (r databaseRepository) HealthCheck(ctx context.Context) error {
 	s := r.db.WithContext(ctx).Exec("SELECT NULL from blob_metadata LIMIT 1")
 	err := s.Error
 	if err != nil {
-		log.Errorf("database health check failed: %v", err)
+		log.Ctx(ctx).Error().Msgf("database health check failed: %v", err)
 		return errors.New("failed to connect to database")
 	}
 	return nil

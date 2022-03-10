@@ -17,11 +17,10 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
-	"github.com/gofrs/uuid"
+	"github.com/google/uuid"
 	"github.com/ismrmrd/mrd-storage-server/api"
 	"github.com/ismrmrd/mrd-storage-server/core"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -34,13 +33,13 @@ var (
 )
 
 func init() {
-	log.SetOutput(ioutil.Discard)
+	log.Logger = log.Output(io.Discard)
 
 	if remoteUrlVar := os.Getenv("TEST_REMOTE_URL"); remoteUrlVar != "" {
 		var err error
 		remoteUrl, err = gourl.Parse(remoteUrlVar)
 		if err != nil {
-			log.Fatalf("Invalid TEST_REMOTE_URL value")
+			log.Fatal().Msg("Invalid TEST_REMOTE_URL value")
 		}
 
 		return
@@ -62,7 +61,7 @@ func init() {
 	case "", ConfigDatabaseProviderSqlite:
 		config.DatabaseConnectionString = "./_data/metadata.db"
 	default:
-		log.Fatalf("Unrecognized TEST_DB_PROVIDER environment variable '%s'", dbProvider)
+		log.Fatal().Msgf("Unrecognized TEST_DB_PROVIDER environment variable '%s'", dbProvider)
 	}
 
 	storageProvider := os.Getenv("TEST_STORAGE_PROVIDER")
@@ -74,13 +73,13 @@ func init() {
 	case "", ConfigStorageProviderFileSystem:
 		config.StorageConnectionString = "./_data/blobs"
 	default:
-		log.Fatalf("Unrecognized TEST_STORAGE_PROVIDER environment variable '%s'", storageProvider)
+		log.Fatal().Msgf("Unrecognized TEST_STORAGE_PROVIDER environment variable '%s'", storageProvider)
 	}
 
 	var err error
 	db, blobStore, err = assembleDataStores(config)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Send()
 	}
 
 	router = assembleHandler(db, blobStore, config)
@@ -781,8 +780,7 @@ func TestStagedBlobsAreNotVisible(t *testing.T) {
 }
 
 func createKey(t *testing.T, subject string) core.BlobKey {
-	id, err := uuid.NewV4()
-	require.Nil(t, err)
+	id := uuid.New()
 	return core.BlobKey{Subject: subject, Id: id}
 }
 

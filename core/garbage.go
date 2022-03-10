@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 // When we write a blob, we first stage it in the metadata database, then write it to the blob store, then
@@ -34,7 +34,7 @@ func CollectGarbage(ctx context.Context, db MetadataDatabase, store BlobStore, o
 }
 
 func processExpiredKey(ctx context.Context, db MetadataDatabase, store BlobStore, key BlobKey) error {
-	log.Infof("Removing expired key %v", key)
+	log.Ctx(ctx).Info().Msgf("Removing expired key %v", key)
 	if err := store.DeleteBlob(ctx, key); err != nil {
 		return err
 	}

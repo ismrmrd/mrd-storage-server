@@ -3,12 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/alecthomas/kong"
 	"github.com/johnstairs/pathenvconfig"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/ismrmrd/mrd-storage-server/api"
 	"github.com/ismrmrd/mrd-storage-server/core"
@@ -23,25 +27,43 @@ const (
 	ConfigStorageProviderAzureBlob   = "azureblob"
 )
 
+type Args struct {
+	PrettyPrint bool   `help:"Pretty-print logs." short:"p"`
+	LogLevel    string `help:"Set the minimum log level to emit." short:"l" default:"Info" enum:"Debug,Info,Warn,Error,Fatal,Panic,Disabled"`
+}
+
 func main() {
+	args := Args{}
+	kong.Parse(&args, kong.UsageOnError())
+
+	configureZerolog(args)
+
 	config := loadConfig()
 
 	db, blobStore, err := assembleDataStores(config)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Send()
 	}
 
 	handler := assembleHandler(db, blobStore, config)
 
 	go garbageCollectionLoop(context.Background(), db, blobStore)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", config.Port), handler))
+
+	l, err := net.Listen("tcp", fmt.Sprintf(":%d", config.Port))
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+
+	log.Info().Msgf("Listening on port %d", config.Port)
+	err = http.Serve(l, handler)
+	log.Fatal().Err(err).Send()
 }
 
 func loadConfig() ConfigSpec {
 	var config ConfigSpec
 	err := pathenvconfig.Process("MRD_STORAGE_SERVER", &config)
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Fatal().Err(err).Send()
 	}
 
 	return config
@@ -90,17 +112,49 @@ func garbageCollectionLoop(ctx context.Context, db core.MetadataDatabase, blobSt
 	ticker := time.NewTicker(30 * time.Minute)
 	for range ticker.C {
 		for i := 0; i < 10; i++ {
-			log.Info("Begining garbage collection")
+			log.Ctx(ctx).Info().Msg("Begining garbage collection")
 			err := core.CollectGarbage(ctx, db, blobStore, time.Now().Add(-30*time.Minute).UTC())
 			if err == nil {
-				log.Info("Garbage collection completed")
+				log.Ctx(ctx).Info().Msg("Garbage collection completed")
 				break
 			}
 
-			log.Errorf("Garbage collection failed: %v", err)
+			log.Ctx(ctx).Error().Msgf("Garbage collection failed: %v", err)
 			time.Sleep(30 * time.Second)
 		}
 	}
+}
+
+func configureZerolog(args Args) {
+
+	zerolog.TimeFieldFormat = "2006-01-02T15:04:05.999Z07:00"
+
+	var level zerolog.Level
+	switch args.LogLevel {
+	case "Trace":
+		level = zerolog.TraceLevel
+	case "Debug":
+		level = zerolog.DebugLevel
+	case "Info":
+		level = zerolog.InfoLevel
+	case "Warn":
+		level = zerolog.WarnLevel
+	case "Error":
+		level = zerolog.ErrorLevel
+	case "Fatal":
+		level = zerolog.FatalLevel
+	case "Panic":
+		level = zerolog.PanicLevel
+	case "Disabled":
+		level = zerolog.Disabled
+	}
+	zerolog.SetGlobalLevel(level)
+
+	if args.PrettyPrint {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	}
+
+	zerolog.DefaultContextLogger = &log.Logger
 }
 
 type ConfigSpec struct {

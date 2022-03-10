@@ -9,7 +9,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/ismrmrd/mrd-storage-server/core"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -74,7 +74,7 @@ func (s *azureBlobStore) DeleteBlob(ctx context.Context, key core.BlobKey) error
 func (s *azureBlobStore) HealthCheck(ctx context.Context) error {
 	_, err := s.containerClient.GetProperties(ctx, nil)
 	if err != nil {
-		log.Errorf("storage health check failed: %v", err)
+		log.Ctx(ctx).Error().Msgf("storage health check failed: %v", err)
 		return errors.New("error accessing storage")
 	}
 
