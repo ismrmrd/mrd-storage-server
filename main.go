@@ -34,11 +34,10 @@ type Args struct {
 }
 
 func main() {
-	args := Args{RequireParentPid: -1}
+	args := Args{}
 	kong.Parse(&args, kong.UsageOnError())
 
 	configureZerolog(args)
-	fmt.Println(args)
 
 	startParentProcessCheck(args)
 
