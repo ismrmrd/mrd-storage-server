@@ -100,3 +100,18 @@ for configuration in "${additionalConfigurations[@]}"; do
     TEST_REMOTE_URL=${additionalConfigurations[0]} go test
   fi
 done
+
+echo
+echo "******* Running parent process exit tests *******"
+# Test the behavior of --require-parent-pid.
+# We launch the server in a docker container so that we don't have port conflicts.
+# Within the container, we run bash (PID 1), which launches another instance of bash (PID != 1),
+# which lanches the server in the background.
+# After the inner bash process exits, we verify whether the server is still running.
+# We repeat this test with and without --require-parent-pid
+build_image_id=$(docker build -q --target build .)
+# When --require-parent-pid is specified, make sure the process exits with its parent
+docker run --rm "${build_image_id}" bash -c "bash -c \"/go/bin/app --require-parent-pid \\\$$ > /dev/null 2>&1 &\" && sleep 2 && ! pgrep -x app" || (echo "server process should have exited when its parent exited" ; exit 1 )
+# Without the option, make sure the process stays up
+docker run --rm "${build_image_id}" bash -c "bash -c \"/go/bin/app > /dev/null 2>&1 &\" && sleep 2 && pgrep -x app > /dev/null" || (echo "server process exited unexpectedly" ; exit 1 )
+echo "PASS"

@@ -28,8 +28,9 @@ const (
 )
 
 type Args struct {
-	PrettyPrint bool   `help:"Pretty-print logs." short:"p"`
-	LogLevel    string `help:"Set the minimum log level to emit." short:"l" default:"Info" enum:"Debug,Info,Warn,Error,Fatal,Panic,Disabled"`
+	PrettyPrint      bool   `help:"Pretty-print logs." short:"p"`
+	LogLevel         string `help:"Set the minimum log level to emit." short:"l" default:"Info" enum:"Debug,Info,Warn,Error,Fatal,Panic,Disabled"`
+	RequireParentPid int    `help:"Exit when the parent process' PID differs from the given value." default:"-1" hidden:""`
 }
 
 func main() {
@@ -37,6 +38,8 @@ func main() {
 	kong.Parse(&args, kong.UsageOnError())
 
 	configureZerolog(args)
+
+	startParentProcessCheck(args)
 
 	config := loadConfig()
 
@@ -155,6 +158,24 @@ func configureZerolog(args Args) {
 	}
 
 	zerolog.DefaultContextLogger = &log.Logger
+}
+
+func startParentProcessCheck(args Args) {
+	if args.RequireParentPid < 0 {
+		return
+	}
+
+	// This is an undocumented "feature" to terminate this process when its parent process exits.
+	// When the parent process exits, this process will be adopted by the init process (PID 1) and therefore
+	// the call to os.Getppdid() will start returning 1.
+	go func() {
+		for {
+			if os.Getppid() != args.RequireParentPid {
+				log.Fatal().Msg("Terminating because the parent process has exited")
+			}
+			time.Sleep(time.Second)
+		}
+	}()
 }
 
 type ConfigSpec struct {
