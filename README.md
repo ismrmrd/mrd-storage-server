@@ -7,26 +7,37 @@ The MRD Storage Server provides a simple RESTful API for storing and retrieving 
 - Searching for blobs
 - Retrieving the latest blob matching a search expression
 
+## Tags
 
-Blobs are stored with a set of metdata tags and searches are expressed as a set of filters over the tags. For creation and search, tags are specified using URI query string parameters. When retrieving a blob, the tags are included as HTTP reponse headers.
+Blobs are described with a set of tags and searches are expressed as a set of filters over the tags. These tags are specified using URI query string parameters both when creating and searching blobs.
 
 The tags are:
 
-| Tag                | HTTP Header            | Query Parameter   | Comments                                                                                                                    |
-|--------------------|------------------------|-------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| `subject`          | `mrd-tag-subject`      | `subject`         | The patient ID. Must be specified when creating and searching. Can be explictly `$null`.                                    |
-| `device`           | `mrd-tag-device`       | `device`          | The device or scanner ID.                                                                                                   |
-| `session`          | `mrd-tag-session`      | `session`         | The session ID.                                                                                                             |
-| `name`             | `mrd-tag-name`         | `name`            | The name of the blob.                                                                                                       |
-| `[custom-tag]`     | `mrd-tag-[custom-tag]` | `[custom-tag]`    | Custom tag names cannot collide with existing tags in this table. Unlike system tags, custom tags can have multiple values. |
-| `content-type`     | `Content-Type`         | `N/A`             | The blob MIME type. Using the standard HTTP header.                                                                         |
-| `location`         | `Location`             | `N/A`             | A URI for reading the blob metadata. System-assigned and globally unique. `[base]/v1/blobs/{{id}}`                                    |
-| `data`             | `N/A`                  | `N/A`             | A URI for reading the blob data. System-assigned and globally unique. `[base]/v1/blobs/{{id}}/data`
-| `last-modified`    | `Last-Modified`        | `N/A`             | The blob's creation timestamp. Using the standard HTTP header, even though blobs are immutable.                             |
+| Tag            | Description                                                                                                                |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `subject`      | The patient ID. Must be specified when creating and searching. For data that is not related to a patient, specify `$null`. |
+| `device`       | The device or scanner ID.                                                                                                  |
+| `session`      | The session ID.                                                                                                            |
+| `name`         | The name of the blob.                                                                                                      |
+| `[custom-tag]` | Any number of custom tags. Unlike system tags, custom tags can have multiple values.                                       |
 
 Tag names are case-insensitive, but their values are case-sensitive.
 
-## Example Interactions
+## Blob Metadata
+
+The metadata stored with each blob includes its tags and a number of other properties. This metadata is returned as a JSON document on creates, metadata reads, and searches. When a blob's data is read, the metadata is returned as HTTP response headers. This metadata is:
+
+| JSON Field     | HTTP Header          | Description                                                                                                                                                         |
+| -------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `[tag-name]`   | `Mrd-Tag-[tag-name]` | The value of each tag. For custom tags with multiple values, the json field value will be an array of strings and the HTTP header will be a comma-delimited string. |
+| `contentType`  | `Content-Type`       | The blob's MIME type, using the standard HTTP header for creates and reads.                                                                                           |
+| `lastModified` | `Last-Modified`      | The blob's creation timestamp. Using the standard HTTP header, even though blobs are immutable.                                                                     |
+| `expires`      | `Expires`            | A datetime after which the blob will be deleted, if the blob was created with a `_ttl=duration` query parameter.                                                    |
+| `location`     | `Location`           | A URI for reading the blob metadata. System-assigned and globally unique. `[base]/v1/blobs/{{id}}`                                                                  |
+| `data`         | `N/A`                | A URI for reading the blob data. System-assigned and globally unique. `[base]/v1/blobs/{{id}}/data`                                                                 |
+
+
+## API
 
 ### Creating a Blob
 
@@ -56,6 +67,38 @@ Content-Type: text/plain; charset=utf-8
    "subject":"123"
 }
 ```
+
+Blobs can be created with a time to live (TTL). Once the TTL expires, the blob is deleted. The TTL is specified with a `_ttl=[duration]` query parameter, where the duration is a sequence of decimal numbers, each with optional fraction and a unit suffix, for example `60m` or `2h45m`. Valid time units are "s" (seconds), "m" (minutes), and "h" (hours).
+
+```
+POST http://localhost:3333/v1/blobs/data?subject=123&session=mysession&name=NoiseCovariance&_ttl=48h
+Content-Type: text/plain
+
+This is my content
+```
+
+Response:
+```
+HTTP/1.1 201 Created
+X-Request-Id: 110c8c60-6ec1-4fa2-8649-a85479a8df43
+Date: Fri, 18 Mar 2022 15:43:04 GMT
+Content-Length: 342
+Content-Type: text/plain; charset=utf-8
+Connection: close
+
+{
+  "contentType": "text/plain",
+  "data": "http://localhost:3333/v1/blobs/a80f86b2-c8c2-4d53-a394-aa548a0a8d34-123/data",
+  "expires": "2022-03-20T15:43:04.152Z",
+  "lastModified": "2022-03-18T15:43:04.152Z",
+  "location": "http://localhost:3333/v1/blobs/a80f86b2-c8c2-4d53-a394-aa548a0a8d34-123",
+  "name": "NoiseCovariance",
+  "session": "mysession",
+  "subject": "123"
+}
+```
+
+Note the `expires` field is 48 hours after the `lastModified` value.
 
 ### Reading a Blob
 
@@ -261,6 +304,43 @@ Content-Length: 310
 }
 ```
 
+### Health Check Endpoint
+
+There is a `/healthcheck` endpoint that can be used to verify that that the server is functioning correctly.
+
+```
+GET http://localhost:3333/healthcheck
+```
+
+Example response when the server is in a healthy state:
+```
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+Date: Wed, 09 Mar 2022 17:12:13 GMT
+Content-Length: 16
+
+{
+  "status": "OK"
+}
+```
+
+Example when there is an issue:
+```
+HTTP/1.1 503 Service Unavailable
+Content-Type: application/json; charset=utf-8
+Date: Wed, 09 Mar 2022 17:13:03 GMT
+Content-Length: 87
+
+{
+  "status": "Service Unavailable",
+  "errors": {
+    "database":"failed to connect to database"
+  }
+}
+```
+
+Error details are written to the log (stderr).
+
 ## Data Store Providers
 
 Blob Metadata (tags) are stored separately from the blob contents. We currently support [PostgreSQL](https://www.postgresql.org/) and [SQLite](https://www.sqlite.org/) for the metadata and the filesystem or [Azure Blob Storage](https://azure.microsoft.com/en-us/services/storage/blobs/) for storing blob contents.
@@ -269,8 +349,8 @@ Blob Metadata (tags) are stored separately from the blob contents. We currently 
 
 By default, the storage server uses SQLite and the filesystem. The behavior of the server can be configured using environment variables:
 
-| Variable                                      | Type    | Description                                                                                                                                                                                                               | Default Value       |
-|-----------------------------------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------|
+| Variable                                      | Type    | Description                                                                                                                                                                                                               | Default Value      |
+| --------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
 | MRD_STORAGE_SERVER_DATABASE_PROVIDER          | string  | The metadata database provider. Can be `sqlite` or `postgresql`.                                                                                                                                                          | sqlite             |
 | MRD_STORAGE_SERVER_DATABASE_CONNECTION_STRING | string  | The provider-specific connection string. For SQLite, the path to the database file.                                                                                                                                       | ./data/metadata.db |
 | MRD_STORAGE_SERVER_DATABASE_PASSWORD          | string  | If specified, provides a password that will be added to the PostgreSQL connection string. Appends `password=<value>` to the connection string. The connection string must be given in keyword/value format, not as a URI. | ./data/metadata.db |
@@ -284,14 +364,3 @@ In addition, any of the above values can be provided as a file instead of being 
 ```bash
 export MRD_STORAGE_SERVER_DATABASE_CONNECTION_STRING_FILE="/path/to/the/connection_string_file.txt"
 ```
-
-## TODO:
-
-- Migration tool
-- Support Azure Managed identity
-- Support Delete
-- Support TTL on blobs
-- Swagger
-- Health check
-- Support TLS
-- Publish releases with binaries for each supported platform
