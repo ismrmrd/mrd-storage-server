@@ -1,5 +1,6 @@
 # Start by building the application.
-FROM golang:1.17-bullseye as build
+FROM mcr.microsoft.com/oss/go/microsoft/golang:1.17-fips-cbl-mariner1.0 as build
+RUN tdnf install -y ca-certificates procps-ng
 
 # create an empty directory that we will use as a COPY source from the final stage
 # so that the nonroot owns the /data directory (there is no mkdir in distroless)
@@ -20,8 +21,28 @@ COPY . .
 
 RUN --mount=type=cache,target=/root/.cache/go-build go build -o /go/bin/app
 
-# Now copy it into our base image.
-FROM gcr.io/distroless/base-debian11
+# Create a non-root user that will be used in the runtime image
+FROM mcr.microsoft.com/cbl-mariner/base/core:2.0 as user_creator
+RUN mkdir -p /staging/etc \
+    && tdnf install -y shadow-utils \
+    && tdnf clean all \
+    && groupadd \
+        --system \
+        --gid=101 \
+        nonroot \
+    && adduser \
+        --uid 101 \
+        --gid nonroot \
+        --shell /bin/false \
+        --no-create-home \
+        --system \
+        nonroot
+
+# Now create the runtime image.
+FROM mcr.microsoft.com/cbl-mariner/distroless/base:2.0
+
+# Copy in user and group files
+COPY --from=user_creator /etc/passwd /etc/group /etc/
 
 # Set up /data as the default storage directory for filesystem-based providers.
 COPY --from=build --chown=nonroot:nonroot /empty/ /data
