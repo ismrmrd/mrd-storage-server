@@ -1,0 +1,26 @@
+package:
+  name: mrd-storage-server
+  version: {{ GIT_DESCRIBE_TAG | replace ("v","") }}
+
+source:
+  path: ../
+
+requirements:
+  build:
+    - go-cgo=1.17.6
+
+  run: {}
+
+test:
+  requires:
+    - curl
+
+about:
+  home: https://github.com/ismrmrd/mrd-storage-server
+  license: MIT
+  summary: 'A simple queryable storage server'
+  description: |
+    A simple RESTful server for storing and retrieving arbitrary data during MRI reconstructions.
+  dev_url: https://github.com/ismrmrd/mrd-storage-server
+  doc_url: https://github.com/ismrmrd/mrd-storage-server
+  doc_source_url: https://github.com/ismrmrd/mrd-storage-server/blob/main/README.md
