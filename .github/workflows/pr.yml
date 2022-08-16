@@ -19,7 +19,12 @@ jobs:
         uses: ./.github/actions/validate
 
   conda-build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
       - name: Conda
         uses: ./.github/actions/conda

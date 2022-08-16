@@ -3,7 +3,6 @@ description: 'Builds and (optionally) publishes conda package'
 runs:
   using: "composite"
   steps:
-    - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
     - uses: conda-incubator/setup-miniconda@e81abac10ce2c37423b54eae5af93aa3b4d3475c
       with:
         activate-environment: mrd-storage-server-build
