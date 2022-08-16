@@ -12,8 +12,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Validate
-        uses: ./.github/actions/validate
+      - name: Dummy
+        shell: bash -l {0}
+        run: |
+          echo "Dummy PR check"
+ 
