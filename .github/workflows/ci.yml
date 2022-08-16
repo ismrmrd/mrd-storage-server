@@ -82,3 +82,15 @@ jobs:
             ### Changelog
 
             {commits}
+
+  conda-build:
+    needs: publish
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Conda
+        uses: ./.github/actions/conda
+
+

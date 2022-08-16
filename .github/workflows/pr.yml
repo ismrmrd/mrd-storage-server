@@ -17,3 +17,9 @@ jobs:
 
       - name: Validate
         uses: ./.github/actions/validate
+
+  conda-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Conda
+        uses: ./.github/actions/conda
