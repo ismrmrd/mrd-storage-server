@@ -2,14 +2,7 @@ on:
   pull_request:
     branches:    
       - main
-  workflow_run:
-    workflows: [ci]
-    types:
-      - completed
   release:
-    types:
-      - published
-      - released
 
 jobs:
   build-conda-packages:
