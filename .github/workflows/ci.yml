@@ -95,7 +95,6 @@ jobs:
       - name: Conda
         uses: ./.github/actions/conda
         with:
-          TEST_INPUT: "CONDA-TEST"
           ANACONDA_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
 
 

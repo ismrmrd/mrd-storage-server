@@ -4,9 +4,6 @@ inputs:
   ANACONDA_TOKEN:
     description: 'Token for pushing to anaconda.org'
     required: true
-  TEST_INPUT:
-    description: 'Playing'
-    required: true
 runs:
   using: "composite"
   steps:
@@ -21,7 +18,6 @@ runs:
       working-directory: conda
       run: |
         export GIT_DESCRIBE_TAG="${GITHUB_REF##*/}"
-        echo "ENVIRONMENT TEST ${{ inputs.TEST_INPUT }}"
         ./package.sh
         echo "Packages built: $(find build_pkg -name mrd-storage-server*.tar.bz2)"
     - name: Push conda package
