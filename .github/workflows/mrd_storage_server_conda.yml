@@ -2,6 +2,10 @@ on:
   pull_request:
     branches:    
       - main
+  workflows_run:
+    workflows: [ci]
+    types:
+      - completed
   release:
     types:
       - published
