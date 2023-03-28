@@ -43,6 +43,7 @@ func (s fileSystemStore) SaveBlob(ctx context.Context, contents io.Reader, key c
 	defer f.Close()
 	writer := bufio.NewWriter(f)
 	_, err = io.Copy(writer, contents)
+	writer.Flush()
 	return err
 }
 

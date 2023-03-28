@@ -8,6 +8,9 @@ import (
 	"path"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 	"github.com/ismrmrd/mrd-storage-server/core"
 	"github.com/rs/zerolog/log"
 )
@@ -17,19 +20,17 @@ var (
 )
 
 type azureBlobStore struct {
-	containerClient azblob.ContainerClient
+	containerClient *container.Client
 }
 
 func NewAzureBlobStore(connectionString string) (core.BlobStore, error) {
-
-	serviceClient, err := azblob.NewServiceClientFromConnectionString(connectionString, nil)
+	containerClient, err := container.NewClientFromConnectionString(connectionString, "mrd-storage-server", nil)
 	if err != nil {
 		return nil, err
 	}
-	containerClient := serviceClient.NewContainerClient("mrd-storage-server")
+
 	if _, err := containerClient.Create(context.Background(), nil); err != nil {
-		var storageError *azblob.StorageError
-		if !errors.As(err, &storageError) || storageError.ErrorCode != azblob.StorageErrorCodeContainerAlreadyExists {
+		if !bloberror.HasCode(err, bloberror.ContainerAlreadyExists) {
 			return nil, err
 		}
 	}
@@ -39,31 +40,28 @@ func NewAzureBlobStore(connectionString string) (core.BlobStore, error) {
 
 func (s *azureBlobStore) SaveBlob(ctx context.Context, contents io.Reader, key core.BlobKey) error {
 	blobClient := s.containerClient.NewBlockBlobClient(blobName(key))
-	_, err := blobClient.UploadStreamToBlockBlob(ctx, contents, azblob.UploadStreamToBlockBlobOptions{})
+	_, err := blobClient.UploadStream(ctx, contents, nil)
 	return err
 }
 
 func (s *azureBlobStore) ReadBlob(ctx context.Context, writer io.Writer, key core.BlobKey) error {
 	blobClient := s.containerClient.NewBlockBlobClient(blobName(key))
-	resp, err := blobClient.Download(ctx, &azblob.DownloadBlobOptions{})
+	resp, err := blobClient.DownloadStream(ctx, &blob.DownloadStreamOptions{})
 	if err != nil {
-		var storageError *azblob.StorageError
-		if errors.As(err, &storageError) && storageError.ErrorCode == azblob.StorageErrorCodeBlobNotFound {
+		if bloberror.HasCode(err, bloberror.BlobNotFound) {
 			return core.ErrBlobNotFound
 		}
 
 		return err
 	}
-	reader := resp.Body(&azblob.RetryReaderOptions{MaxRetryRequests: 20})
-	_, err = io.Copy(writer, reader)
+	_, err = io.Copy(writer, resp.Body)
 	return err
 }
 
 func (s *azureBlobStore) DeleteBlob(ctx context.Context, key core.BlobKey) error {
 	blobClient := s.containerClient.NewBlockBlobClient(blobName(key))
 	if _, err := blobClient.Delete(ctx, &azblob.DeleteBlobOptions{}); err != nil {
-		var storageError *azblob.StorageError
-		if !errors.As(err, &storageError) || storageError.ErrorCode != azblob.StorageErrorCodeBlobNotFound {
+		if !bloberror.HasCode(err, bloberror.BlobNotFound) {
 			return err
 		}
 	}
