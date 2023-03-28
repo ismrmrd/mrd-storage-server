@@ -6,9 +6,7 @@ source:
   path: ../
 
 requirements:
-  build:
-    - go-cgo=1.17.6
-
+  build: {}
   run: {}
 
 test:
