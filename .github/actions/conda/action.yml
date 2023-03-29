@@ -8,14 +8,14 @@ runs:
   using: "composite"
   steps:
     - uses: actions/setup-go@v4
+      id: setup-go
       with:
         go-version-file: 'go.mod'
 
-    - name: check go
-      shell: bash -l {0}
+    - shell: bash
       run: |
-        env
-        which go
+        go_install_path=$(dirname "$(which go)")
+        echo "GO_INSTALL_PATH=${go_install_path}" >> $GITHUB_ENV
 
     - uses: conda-incubator/setup-miniconda@e81abac10ce2c37423b54eae5af93aa3b4d3475c
       with:
@@ -29,6 +29,7 @@ runs:
       working-directory: conda
       run: |
         export GIT_DESCRIBE_TAG="${GITHUB_REF##*/}"
+        export PATH=${GO_INSTALL_PATH}:${PATH}
         ./package.sh
         echo "Packages built: $(find build_pkg -name mrd-storage-server*.tar.bz2)"
 

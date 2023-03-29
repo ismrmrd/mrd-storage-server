@@ -2,10 +2,11 @@
 
 set -euo pipefail
 
-echo "env..."
+echo "build.sh: env..."
 env
 
-echo "which go..."
+echo "build.sh: which go..."
 which go
 
-go build -o "${PREFIX}/bin/mrd-storage-server" .
+echo "build.sh: go build..."
+go build -v -o "${PREFIX}/bin/mrd-storage-server" .
