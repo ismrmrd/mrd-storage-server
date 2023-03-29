@@ -3,6 +3,7 @@ name: pr
 on:
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 env:
   DOCKER_BUILDKIT: 1
