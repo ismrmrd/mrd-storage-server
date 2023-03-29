@@ -12,7 +12,7 @@ runs:
         go-version-file: 'go.mod'
 
     - name: check go
-      shell: bash
+      shell: bash -l {0}
       run: |
         env
         which go
