@@ -1,44 +1,50 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
-// https://github.com/microsoft/vscode-dev-containers/tree/v0.202.1/containers/go
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/go
 {
-	"name": "Go",
-	"build": {
-		"dockerfile": "Dockerfile",
+	"name": "mrd-storage-server",
+	"image": "mcr.microsoft.com/devcontainers/go:0-1.20",
+	"features": {
+		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+			"moby": true,
+			"installDockerBuildx": true,
+			"version": "20.10",
+			"dockerDashComposeVersion": "v2"
+		},
+		"ghcr.io/warrenbuckley/codespace-features/sqlite:1": {}
 	},
+
 	"runArgs": [ "--init", "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined", "--network=host" ],
 
-	// Set *default* container specific settings.json values on container create.
-	"settings": {
-		"files.trimFinalNewlines": true,
-		"files.trimTrailingWhitespace": true,
-		"files.insertFinalNewline": true,
+	"postCreateCommand": "go install github.com/golang/mock/mockgen@v1.6.0",
 
-		"go.toolsManagement.checkForUpdates": "local",
-		"go.useLanguageServer": true,
-		"go.gopath": "/go",
-		"go.goroot": "/usr/local/go",
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"files.trimFinalNewlines": true,
+				"files.trimTrailingWhitespace": true,
+				"files.insertFinalNewline": true,
 
-		"go.testFlags": ["-coverpkg=github.com/ismrmrd/mrd-storage-server/..."],
-		"go.testEnvVars": {
-			// "TEST_DB_PROVIDER":"postgresql",
-			// "TEST_STORAGE_PROVIDER":"azureblob",
-			// "TEST_REMOTE_URL":"http://localhost:3333",
-		},
-	},
+				"go.toolsManagement.checkForUpdates": "local",
+				"go.useLanguageServer": true,
+				"go.gopath": "/go",
+				"go.goroot": "/usr/local/go",
 
-	// Add the IDs of extensions you want installed when the container is created.
-	"extensions": [
-		"eamodio.gitlens",
-		"foxundermoon.shell-format",
-		"golang.Go",
-		"humao.rest-client",
-		"mhutchie.git-graph",
-		"timonwong.shellcheck"
-	],
+				"go.testFlags": ["-coverpkg=github.com/ismrmrd/mrd-storage-server/..."],
+				"go.testEnvVars": {
+					// "TEST_DB_PROVIDER":"postgresql",
+					// "TEST_STORAGE_PROVIDER":"azureblob",
+					// "TEST_REMOTE_URL":"http://localhost:3333",
+				}
+			},
 
-	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
-	"remoteUser": "vscode",
-	"features": {
-		"docker-from-docker": "20.10"
+			"extensions": [
+				"eamodio.gitlens",
+				"foxundermoon.shell-format",
+				"golang.Go",
+				"humao.rest-client",
+				"mhutchie.git-graph",
+				"timonwong.shellcheck"
+			]
+		}
 	}
 }

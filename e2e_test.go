@@ -584,7 +584,8 @@ func populateBlobResponse(t *testing.T, resp *http.Response) ReadResponse {
 	readResponse.RawResponse = resp
 	readResponse.StatusCode = resp.StatusCode
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
 	readResponse.Body = string(body)
 	errorResponse := api.ErrorResponse{}
 	if json.Unmarshal(body, &errorResponse) == nil {

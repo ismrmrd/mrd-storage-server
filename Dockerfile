@@ -1,5 +1,5 @@
 # Start by building the application.
-FROM mcr.microsoft.com/oss/go/microsoft/golang:1.17-fips-cbl-mariner1.0 as build
+FROM mcr.microsoft.com/oss/go/microsoft/golang:1.20-fips-cbl-mariner1.0 as build
 RUN tdnf install -y ca-certificates procps-ng
 
 # create an empty directory that we will use as a COPY source from the final stage
