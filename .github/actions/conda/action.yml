@@ -14,6 +14,10 @@ runs:
 
     - shell: bash
       run: |
+        # Creating a bash login shell (required to activate the conda environment
+        # created below) significantly changes the $PATH variable on macos, which
+        # results in the wrong version of Go being chosen. So we capture the directory
+        # and prepend it to $PATH after the login shell has initialized below.
         go_install_path=$(dirname "$(which go)")
         echo "GO_INSTALL_PATH=${go_install_path}" >> $GITHUB_ENV
 
