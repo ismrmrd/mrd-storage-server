@@ -9,6 +9,7 @@ runs:
   steps:
     - name: brew unlink go
       if: runner.os == 'macOS'
+      shell: bash
       run: |
         brew unlink go
 
