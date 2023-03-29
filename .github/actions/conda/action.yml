@@ -7,15 +7,22 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: brew unlink go
+      if: runner.os == 'macOS'
+      run: |
+        brew unlink go
+
     - uses: actions/setup-go@v4
       with:
         go-version: 1.20.2
+
     - uses: conda-incubator/setup-miniconda@e81abac10ce2c37423b54eae5af93aa3b4d3475c
       with:
         activate-environment: mrd-storage-server-build
         environment-file: conda/environment.yml
         python-version: 3.9
         auto-activate-base: false
+
     - name: Build conda package
       shell: bash -l {0}
       working-directory: conda
@@ -23,6 +30,7 @@ runs:
         export GIT_DESCRIBE_TAG="${GITHUB_REF##*/}"
         ./package.sh
         echo "Packages built: $(find build_pkg -name mrd-storage-server*.tar.bz2)"
+
     - name: Push conda package
       shell: bash -l {0}
       if: ${{ github.event_name == 'push' && github.ref_type == 'tag' }}
